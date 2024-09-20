@@ -31,9 +31,9 @@ contract Catapoolt {
 
     function createCampaign(Campaign memory campaign) public {
         // Create a new campaign
-        campaignId++;
         campaign.id = campaignId;
         campaigns.push(campaign);
+        campaignId++;
     }
 
     function getCampaigns() public view returns (Campaign[] memory) {
