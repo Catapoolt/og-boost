@@ -5,8 +5,14 @@ pragma solidity ^0.8.25;
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract Catapoolt {
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {CLBaseHook} from "./CLBaseHook.sol";
+
+contract Catapoolt is CLBaseHook {
     using SafeERC20 for IERC20;
+    using PoolIdLibrary for PoolKey;
 
     struct Campaign {
         uint256 id;
@@ -48,6 +54,42 @@ contract Catapoolt {
         uint256 startsAt,
         uint256 endsAt
     );
+
+
+
+    ////////////////////////////////////////
+    // HOOK RELATED FUNCTIONS             //    
+    ////////////////////////////////////////
+
+
+    constructor(ICLPoolManager _poolManager) CLBaseHook(_poolManager) {}
+
+    function getHooksRegistrationBitmap() external pure override returns (uint16) {
+        return _hooksRegistrationBitmapFrom(
+            Permissions({
+                beforeInitialize: false,
+                afterInitialize: false,
+                beforeAddLiquidity: false,
+                afterAddLiquidity: false,
+                beforeRemoveLiquidity: false,
+                afterRemoveLiquidity: false,
+                beforeSwap: false,
+                afterSwap: false,
+                beforeDonate: false,
+                afterDonate: false,
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidityReturnsDelta: false,
+                afterRemoveLiquidityReturnsDelta: false
+            })
+        );
+    }
+
+
+
+    ////////////////////////////////////////
+    // CAMPAIGN FUNCTIONS                 //    
+    ////////////////////////////////////////
 
     /**
      * @dev Creates a new reward campaign.
