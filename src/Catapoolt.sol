@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+// Import OpenZeppelin's IERC20 and SafeERC20 libraries
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 contract Catapoolt {
+    using SafeERC20 for IERC20;
 
     struct Campaign {
         uint256 id;
@@ -10,9 +15,14 @@ contract Catapoolt {
         address rewardToken;
         uint256 startsAt;
         uint256 endsAt;
+    }
+
+    struct Multiplier {
+        uint256 campaignId;
+        // minimum amount of fees to be earned to get the multiplier
         uint256 earnedFeesAmount;
         address feeToken;
-        uint256 minFees;
+        // multiplier expressed in basis points
         uint256 multiplier;
     }
     
@@ -29,11 +39,67 @@ contract Catapoolt {
 
     uint256 public campaignId;
 
-    function createCampaign(Campaign memory campaign) public {
-        // Create a new campaign
-        campaign.id = campaignId;
-        campaigns.push(campaign);
+    // Event emitted when a new campaign is created
+    event CampaignCreated(
+        uint256 indexed id,
+        address indexed pool,
+        uint256 rewardAmount,
+        address rewardToken,
+        uint256 startsAt,
+        uint256 endsAt
+    );
+
+    /**
+     * @dev Creates a new reward campaign.
+     * Transfers the specified amount of reward tokens from the caller to the contract.
+     * @param _pool The address of the liquidity pool.
+     * @param _rewardAmount The total amount of reward tokens to be distributed.
+     * @param _rewardToken The address of the ERC20 reward token.
+     * @param _startsAt The timestamp when the campaign starts.
+     * @param _endsAt The timestamp when the campaign ends.
+     */
+    function createCampaign(
+        address _pool,
+        uint256 _rewardAmount,
+        address _rewardToken,
+        uint256 _startsAt,
+        uint256 _endsAt
+    ) external {
+        require(_pool != address(0), "Invalid pool address");
+        require(_rewardToken != address(0), "Invalid reward token address");
+        require(_endsAt > _startsAt, "End time must be after start time");
+        require(_rewardAmount > 0, "Reward amount must be greater than zero");
+
+        // Transfer the reward tokens from the IP to the contract
+        IERC20 rewardToken = IERC20(_rewardToken);
+        rewardToken.safeTransferFrom(msg.sender, address(this), _rewardAmount);
+
+        // Create the campaign
+        Campaign memory newCampaign = Campaign({
+            id: campaignId,
+            pool: _pool,
+            rewardAmount: _rewardAmount,
+            rewardToken: _rewardToken,
+            startsAt: _startsAt,
+            endsAt: _endsAt
+        });
+
+        campaigns.push(newCampaign);
+
+        emit CampaignCreated(
+            campaignId,
+            _pool,
+            _rewardAmount,
+            _rewardToken,
+            _startsAt,
+            _endsAt
+        );
+
         campaignId++;
+    }
+
+    function createMultiplier(Multiplier memory multiplier) public {
+        // Create a new multiplier
     }
 
     function getCampaigns() public view returns (Campaign[] memory) {
@@ -42,7 +108,7 @@ contract Catapoolt {
     }
 
     function getCampaign(uint256 id) public view returns (Campaign memory) {
-        // Return a specific campaign
+        require(id < campaigns.length, "Campaign does not exist");
         return campaigns[id];
     }
 
@@ -63,5 +129,6 @@ contract Catapoolt {
     }
 
     function claimReward(uint256 rewardId) public {
+        // Implementation to claim rewards
     }
 }
