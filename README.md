@@ -35,6 +35,16 @@ Covalent's GoldRush indexer is used to retrieve on-chain data:
 https://goldrush.dev/docs/api/base/get-log-events-by-contract-address/
 
 3. The data is run through the Brevis circuit and pushed on-chain.
+Request params:
+```
+// LP address
+address[] ogAddresses
+// The currency the fees were collected in
+address[] tokenAddresses
+// The corresponding amounts 
+uint256[] amounts
+```
+All three arrays have the same length.
 
 ## Catapoolt contract
 0x6F7DBD987e1a8c8F335d351C561C5687e415F5a5
