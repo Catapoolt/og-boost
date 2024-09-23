@@ -15,7 +15,7 @@ At a given point in time, an LP can withdraw the amount of accrued rewards. The 
 
 ### Brevis OG Proof
 The off chain component:
-1. Reads the OG offerings from the main contract. An OG offering specifies the rewards multiplier (in bps) that is applied to the addresses that in the past have earned fees in a certain currency above a given amount.
+1. Reads the OG offerings from the main contract. An OG offering specifies the rewards multiplier (in bps) that is applied to the addresses that in the past have earned LP fees in a certain currency above a given amount.
 ```
 struct Offering {
     address currency;
@@ -24,7 +24,7 @@ struct Offering {
     uint256 multiplier;
 }
 ```
-2. Retrieves the PancakeSwap V3 the fee earning events from the past 30 days. We are interested in all the events that show that a user has earned `currency` in summed total above `amount`. These users are considered OG LPs.
+2. Retrieves the PancakeSwap V3 LP fee earning events from the past 30 days. We are interested in all the events that show that a user has earned `currency` in summed total above `amount`. These users are considered OG LPs.
 
 Event signature:
 ```
