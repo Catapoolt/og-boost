@@ -11,6 +11,26 @@ An IP creates a reward campaign on a selected pool and specifies the amount of r
 At a given point in time, an LP can withdraw the amount of accrued rewards. The IP rewards are equally allocated for each block within the interval.
 
 
-## Catapoolt contract
+## Implementation
 
+### Brevis OG Proof
+The off chain component:
+1. Reads the OG offerings from the main contract. An OG offering specifies the rewards multiplier (in bps) that is applied to the addresses that in the past have earned fees in a certain currency above a given amount.
+```
+struct Offering {
+    address currency;
+    uint256 amount;
+    PoolId poolId;
+    uint256 multiplier;
+}
+```
+2. Retrieves the PancakeSwap V3 the fee earning events from the past 30 days. We are interested in all the events that show that a user has earned `currency` in summed total above `amount`. These users are considered OG LPs.
+
+Event signature:
+```
+Collect (index_topic_1 uint256 tokenId, address recipient, uint256 amount0, uint256 amount1)
+```
+3. The data is run through the Brevis circuit and pushed on-chain.
+
+## Catapoolt contract
 0x6F7DBD987e1a8c8F335d351C561C5687e415F5a5
