@@ -30,6 +30,14 @@ Event signature:
 ```
 Collect (index_topic_1 uint256 tokenId, address recipient, uint256 amount0, uint256 amount1)
 ```
+Topic:
+```
+0x40d0efd1a53d60ecbf40971b9daf7dc90178c3aadc7aab1765632738fa8b8f01
+```
+Example tx containing one event on BNB Chain testnet:
+```
+https://testnet.bscscan.com/tx/0xdd94da45b82440d87911c0f1a7972fdae1f7b259dba5ac742d7a564c746bf511
+```
 
 Covalent's GoldRush indexer is used to retrieve on-chain data:
 https://goldrush.dev/docs/api/base/get-log-events-by-contract-address/
