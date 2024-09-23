@@ -10,7 +10,7 @@ import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
 import {CLBaseHook} from "./CLBaseHook.sol";
 
-contract Catapoolt is CLBaseHook {
+contract Catapoolt /* is CLBaseHook */ {
     using SafeERC20 for IERC20;
     using PoolIdLibrary for PoolKey;
 
@@ -56,35 +56,32 @@ contract Catapoolt is CLBaseHook {
     );
 
 
+    constructor(ICLPoolManager _poolManager) /* CLBaseHook(_poolManager) */ {}
 
     ////////////////////////////////////////
     // HOOK RELATED FUNCTIONS             //    
     ////////////////////////////////////////
 
-
-    constructor(ICLPoolManager _poolManager) CLBaseHook(_poolManager) {}
-
-    function getHooksRegistrationBitmap() external pure override returns (uint16) {
-        return _hooksRegistrationBitmapFrom(
-            Permissions({
-                beforeInitialize: false,
-                afterInitialize: false,
-                beforeAddLiquidity: false,
-                afterAddLiquidity: false,
-                beforeRemoveLiquidity: false,
-                afterRemoveLiquidity: false,
-                beforeSwap: false,
-                afterSwap: false,
-                beforeDonate: false,
-                afterDonate: false,
-                beforeSwapReturnsDelta: false,
-                afterSwapReturnsDelta: false,
-                afterAddLiquidityReturnsDelta: false,
-                afterRemoveLiquidityReturnsDelta: false
-            })
-        );
-    }
-
+    // function getHooksRegistrationBitmap() external pure override returns (uint16) {
+    //     return _hooksRegistrationBitmapFrom(
+    //         Permissions({
+    //             beforeInitialize: false,
+    //             afterInitialize: false,
+    //             beforeAddLiquidity: false,
+    //             afterAddLiquidity: false,
+    //             beforeRemoveLiquidity: false,
+    //             afterRemoveLiquidity: false,
+    //             beforeSwap: false,
+    //             afterSwap: false,
+    //             beforeDonate: false,
+    //             afterDonate: false,
+    //             beforeSwapReturnsDelta: false,
+    //             afterSwapReturnsDelta: false,
+    //             afterAddLiquidityReturnsDelta: false,
+    //             afterRemoveLiquidityReturnsDelta: false
+    //         })
+    //     );
+    // }
 
 
     ////////////////////////////////////////
