@@ -9,6 +9,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {CLPosition} from "pancake-v4-core/src/pool-cl/libraries/CLPosition.sol";
+
+import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
+
 import {CLBaseHook} from "./CLBaseHook.sol";
 
 import "brevis-sdk/apps/framework/BrevisApp.sol";
@@ -72,9 +76,16 @@ contract Catapoolt is BrevisApp, Ownable {
     mapping(address => uint256) internal offeringLengths;
     mapping(address => mapping(PoolId => uint256)) internal ogMultipliers;
 
+
+    ICLPoolManager public poolManager;
+
     constructor(ICLPoolManager _poolManager, address _brevisRequest) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
-        
+        poolManager = _poolManager;
     }
+
+    ////////////////////////////////////////
+    // BREVIS FUNCTIONS                   //    
+    ////////////////////////////////////////
 
     function setVkHash(bytes32 _vkHash) external onlyOwner {
         vkHash = _vkHash;
@@ -122,7 +133,7 @@ contract Catapoolt is BrevisApp, Ownable {
 
 
     ////////////////////////////////////////
-    // HOOK RELATED FUNCTIONS             //    
+    // HOOK FUNCTIONS                     //    
     ////////////////////////////////////////
 
     // function getHooksRegistrationBitmap() external pure override returns (uint16) {
@@ -148,7 +159,7 @@ contract Catapoolt is BrevisApp, Ownable {
 
 
     ////////////////////////////////////////
-    // CAMPAIGN FUNCTIONS                 //    
+    // CAMPAIGN PUBLIC FUNCTIONS          //    
     ////////////////////////////////////////
 
     /**
@@ -216,9 +227,9 @@ contract Catapoolt is BrevisApp, Ownable {
 
     function listRewards(address user) public view returns (Reward[] memory) {
         // mock function. all users get a reward of 100 tokens in each campaign
-        Reward[] memory rewards = new Reward[](campaigns.length);
+        Reward[] memory mockRewards = new Reward[](campaigns.length);
         for (uint256 i = 0; i < campaigns.length; i++) {
-            rewards[i] = Reward({
+            mockRewards[i] = Reward({
                 id: i,
                 campaignId: i,
                 user: user,
@@ -227,10 +238,149 @@ contract Catapoolt is BrevisApp, Ownable {
                 claimedAt: 0
             });
         }
-        return rewards;
+        return mockRewards;
     }
 
     function claimReward(uint256 rewardId) public {
         // Implementation to claim rewards
     }
+
+
+    ////////////////////////////////////////
+    // LP INCENTIVES HELPER FUNCTIONS     //    
+    ////////////////////////////////////////
+
+    struct PositionParams {
+        PoolId poolId;
+        address owner;
+        int24 tickLower;
+        int24 tickUpper;
+        bytes32 salt;
+    }
+
+    struct WithdrawalSnapshot {
+        uint256 feeGrowthInside0X128;
+        uint256 feeGrowthInside1X128;
+        uint256 feesGrowthGlobal0X128;
+        uint256 feesGrowthGlobal1X128;
+        uint256 blockNumber;
+    }
+
+    struct Values {
+        uint256 amountPerBlock;
+        uint256 nrOfBlocks;
+    }
+
+    mapping(bytes32 => WithdrawalSnapshot) public lastWithdrawals;
+
+    mapping(PoolId => mapping(IERC20 => Values)) public rewards;
+
+    function withdrawRewards(
+        PositionParams memory params,
+        IERC20 rewardToken,
+        address claimer
+    ) external returns (uint256 rewards0, uint256 rewards1) {
+        // TODO Ensure the claimer is the owner of the position
+        // require(params.owner == msg.sender, "Caller is not the owner");
+
+        // Calculate rewards
+        (rewards0, rewards1) = calculateRewards(params, rewardToken);
+
+        // Fetch the position information to get fee growth inside values
+        CLPosition.Info memory position = poolManager.getPosition(
+            params.poolId,
+            params.owner,
+            params.tickLower,
+            params.tickUpper,
+            params.salt
+        );
+
+        // Fetch the global fee growth values
+        (uint256 feeGrowthGlobal0X128, uint256 feeGrowthGlobal1X128) = poolManager.getFeeGrowthGlobals(params.poolId);
+
+        // Update the last withdrawal snapshot
+        bytes32 positionId = toPositionId(params.poolId, params.owner, params.tickLower, params.tickUpper, params.salt);
+        lastWithdrawals[positionId] = WithdrawalSnapshot({
+            feeGrowthInside0X128: position.feeGrowthInside0LastX128,
+            feeGrowthInside1X128: position.feeGrowthInside1LastX128,
+            feesGrowthGlobal0X128: feeGrowthGlobal0X128,
+            feesGrowthGlobal1X128: feeGrowthGlobal1X128,
+            blockNumber: block.number
+        });
+
+        // Transfer the rewards to the user
+        uint256 totalRewards = rewards0 + rewards1;
+        require(rewardToken.balanceOf(address(this)) >= totalRewards, "Insufficient contract balance");
+
+        rewardToken.transfer(claimer, totalRewards);
+    }
+
+    function calculateRewards(
+        PositionParams memory params,
+        IERC20 rewardToken
+    ) public view returns (uint256 rewards0, uint256 rewards1) {
+        // Create position ID using the struct
+        bytes32 positionId = toPositionId(params.poolId, params.owner, params.tickLower, params.tickUpper, params.salt);
+
+        // Access withdrawal data
+        WithdrawalSnapshot memory lastWithdrawal = lastWithdrawals[positionId];
+
+        // Calculate fees accrued by the user since the last reward withdrawal
+        (uint256 fees0, uint256 fees1) = getFeesAccrued(
+            params.poolId, params.owner, params.tickLower, params.tickUpper, params.salt,
+            lastWithdrawal.feeGrowthInside0X128, lastWithdrawal.feeGrowthInside1X128
+        );
+
+        // Calculate fees accrued by all the users since the last reward withdrawal
+        (uint256 feesGlobal0, uint256 feesGlobal1) = getFeesAccruedGlobal(
+            params.poolId, lastWithdrawal.feesGrowthGlobal0X128, lastWithdrawal.feesGrowthGlobal1X128
+        );
+
+        // Calculate total rewards since the last withdrawal of the user
+        uint256 blocksPassed = block.number - lastWithdrawal.blockNumber;
+        uint256 rewardPerBlock = rewards[params.poolId][rewardToken].amountPerBlock;
+        uint256 totalRewards = blocksPassed * rewardPerBlock;
+
+        // Rewards are split equally between the two swap directions
+        uint256 totalRewardsPerDirection = totalRewards / 2;
+
+        // Calculate the amount of rewards the user can claim
+        rewards0 = (feesGlobal0 == 0) ? 0 : FullMath.mulDiv(fees0, totalRewardsPerDirection, feesGlobal0);
+        rewards1 = (feesGlobal1 == 0) ? 0 : FullMath.mulDiv(fees1, totalRewardsPerDirection, feesGlobal1);
+    }
+
+    function toPositionId(PoolId poolId, address owner, int24 tickLower, int24 tickUpper, bytes32 salt) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(poolId, owner, tickLower, tickUpper, salt));
+    }
+
+    function getFeesAccrued(
+        PoolId poolId,
+        address owner,
+        int24 tickLower, 
+        int24 tickUpper,
+        bytes32 salt,
+        uint256 feeGrowthInside0X128LastWithdrawal,
+        uint256 feeGrowthInside1X128LastWithdrawal
+    ) public view returns (uint256 fees0, uint256 fees1) {
+        CLPosition.Info memory position = poolManager.getPosition(poolId, owner, tickLower, tickUpper, salt);
+
+        unchecked {
+            fees0 = position.feeGrowthInside0LastX128 - feeGrowthInside0X128LastWithdrawal;
+            fees1 = position.feeGrowthInside1LastX128 - feeGrowthInside1X128LastWithdrawal;
+        }
+    }
+
+    function getFeesAccruedGlobal(
+        PoolId poolId,
+        uint256 feesGrowthGlobal0X128LastWithdrawal,
+        uint256 feesGrowthGlobal1X128LastWithdrawal
+    ) public view returns (uint256 feesGlobal0, uint256 feesGlobal1) {
+        (uint256 feeGrowthGlobal0X128, uint256 feeGrowthGlobal1X128) = poolManager.getFeeGrowthGlobals(poolId);
+
+        unchecked {
+            feesGlobal0 = feeGrowthGlobal0X128 - feesGrowthGlobal0X128LastWithdrawal;
+            feesGlobal1 = feeGrowthGlobal1X128 - feesGrowthGlobal1X128LastWithdrawal;
+        }
+    }
+
 }
