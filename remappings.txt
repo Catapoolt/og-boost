@@ -5,3 +5,4 @@ solmate/=lib/pancake-v4-universal-router/lib/pancake-v4-periphery/lib/pancake-v4
 pancake-v4-periphery/=lib/pancake-v4-universal-router/lib/pancake-v4-periphery/
 pancake-v4-core/=lib/pancake-v4-universal-router/lib/pancake-v4-periphery/lib/pancake-v4-core
 permit2/=lib/pancake-v4-universal-router/lib/pancake-v4-periphery/lib/permit2/
+brevis-sdk/=lib/brevis-contracts/contracts/sdk/
