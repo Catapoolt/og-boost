@@ -30,6 +30,10 @@ Event signature:
 ```
 Collect (index_topic_1 uint256 tokenId, address recipient, uint256 amount0, uint256 amount1)
 ```
+
+Covalent's GoldRush indexer is used to retrieve on-chain data:
+https://goldrush.dev/docs/api/base/get-log-events-by-contract-address/
+
 3. The data is run through the Brevis circuit and pushed on-chain.
 
 ## Catapoolt contract
