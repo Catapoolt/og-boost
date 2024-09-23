@@ -54,5 +54,19 @@ uint256[] amounts
 ```
 All three arrays have the same length.
 
-## Catapoolt contract
-0x6F7DBD987e1a8c8F335d351C561C5687e415F5a5
+
+## Deployment
+
+```
+PRIVATE_KEY=<Your_Private_Key>
+RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545/
+POOL_MANAGER=<Pool_Manager_Address>
+BREVIS_REQUEST=<Brevis_Request_Address>
+```
+
+### Catapoolt contract (BNB Chain Testnet)
+0x304608FD8B756B4c596fe812700A7eBC53f4E35d
+
+##### Dependencies
+CLPoolManager `0x969D90aC74A1a5228b66440f8C8326a8dA47A5F9`
+BrevisRequest `0xF7E9CB6b7A157c14BCB6E6bcf63c1C7c92E952f5`

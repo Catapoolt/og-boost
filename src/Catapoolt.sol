@@ -72,8 +72,8 @@ contract Catapoolt is BrevisApp, Ownable {
     mapping(address => uint256) internal offeringLengths;
     mapping(address => mapping(PoolId => uint256)) internal ogMultipliers;
 
-    constructor(ICLPoolManager _poolManager, IBrevisProof _brevisProof) BrevisApp(address(_brevisProof)) Ownable(msg.sender) {
-
+    constructor(ICLPoolManager _poolManager, address _brevisRequest) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
+        
     }
 
     function setVkHash(bytes32 _vkHash) external onlyOwner {
