@@ -24,7 +24,7 @@ contract Catapoolt is BrevisApp, Ownable {
 
     struct Campaign {
         uint256 id;
-        address pool;
+        PoolId pool;
         uint256 rewardAmount;
         address rewardToken;
         uint256 startsAt;
@@ -58,12 +58,12 @@ contract Catapoolt is BrevisApp, Ownable {
 
     Campaign[] public campaigns;
 
-    uint256 public campaignId;
+    uint256 public campaignsCount;
 
     // Event emitted when a new campaign is created
     event CampaignCreated(
         uint256 indexed id,
-        address indexed pool,
+        PoolId indexed pool,
         uint256 rewardAmount,
         address rewardToken,
         uint256 startsAt,
@@ -172,13 +172,15 @@ contract Catapoolt is BrevisApp, Ownable {
      * @param _endsAt The timestamp when the campaign ends.
      */
     function createCampaign(
-        address _pool,
+        PoolId _pool,
         uint256 _rewardAmount,
         address _rewardToken,
         uint256 _startsAt,
-        uint256 _endsAt
+        uint256 _endsAt,
+        uint256 earnedFeesAmount,
+        address feeToken,
+        uint256 multiplierPercent
     ) external {
-        require(_pool != address(0), "Invalid pool address");
         require(_rewardToken != address(0), "Invalid reward token address");
         require(_endsAt > _startsAt, "End time must be after start time");
         require(_rewardAmount > 0, "Reward amount must be greater than zero");
@@ -189,7 +191,7 @@ contract Catapoolt is BrevisApp, Ownable {
 
         // Create the campaign
         Campaign memory newCampaign = Campaign({
-            id: campaignId,
+            id: campaignsCount,
             pool: _pool,
             rewardAmount: _rewardAmount,
             rewardToken: _rewardToken,
@@ -200,7 +202,7 @@ contract Catapoolt is BrevisApp, Ownable {
         campaigns.push(newCampaign);
 
         emit CampaignCreated(
-            campaignId,
+            campaignsCount,
             _pool,
             _rewardAmount,
             _rewardToken,
@@ -208,7 +210,15 @@ contract Catapoolt is BrevisApp, Ownable {
             _endsAt
         );
 
-        campaignId++;
+        Multiplier memory multiplier = Multiplier({
+            campaignId: campaignsCount,
+            earnedFeesAmount: earnedFeesAmount,
+            feeToken: feeToken,
+            multiplier: multiplierPercent
+        });
+        createMultiplier(multiplier);
+
+        campaignsCount++;
     }
 
     function createMultiplier(Multiplier memory multiplier) public {
@@ -225,23 +235,76 @@ contract Catapoolt is BrevisApp, Ownable {
         return campaigns[id];
     }
 
+
+    mapping(address => PositionParams[]) public userPositions;
+    
+    mapping(PoolId => uint256) public campaignIds;
+
     function listRewards(address user) public view returns (Reward[] memory) {
-        // mock function. all users get a reward of 100 tokens in each campaign
-        Reward[] memory mockRewards = new Reward[](campaigns.length);
-        for (uint256 i = 0; i < campaigns.length; i++) {
-            mockRewards[i] = Reward({
-                id: i,
-                campaignId: i,
-                user: user,
-                amount: 100 ether,
-                claimed: false,
-                claimedAt: 0
-            });
+        PositionParams[] memory positionParams = userPositions[user];
+        
+        // Keep track of campaigns that have already been processed
+        uint256[] memory processedCampaigns = new uint256[](positionParams.length);
+        uint256 totalCampaigns = 0;
+        
+        // Estimate the maximum number of rewards
+        Reward[] memory tempRewards = new Reward[](positionParams.length);
+
+        // Loop through each position of the user
+        for (uint256 i = 0; i < positionParams.length; i++) {
+            uint256 campaignId = campaignIds[positionParams[i].poolId];
+            
+            // Check if this campaignId has already been processed
+            bool alreadyProcessed = false;
+            for (uint256 j = 0; j < totalCampaigns; j++) {
+                if (processedCampaigns[j] == campaignId) {
+                    alreadyProcessed = true;
+                    break;
+                }
+            }
+
+            // If not already processed, list rewards for this campaign
+            if (!alreadyProcessed) {
+                processedCampaigns[totalCampaigns] = campaignId;
+                tempRewards[totalCampaigns] = listRewards(user, campaignId);
+                totalCampaigns++;
+            }
         }
-        return mockRewards;
+
+        // Prepare the final array with the correct size
+        Reward[] memory userRewards = new Reward[](totalCampaigns);
+        for (uint256 i = 0; i < totalCampaigns; i++) {
+            userRewards[i] = tempRewards[i];
+        }
+
+        return userRewards;
     }
 
-    function claimReward(uint256 rewardId) public {
+    function listRewards(address user, uint256 campaignId) public view returns (Reward memory) {
+        PositionParams[] memory positionParams = userPositions[user];
+        uint256 totalRewards = 0;
+        
+        // Iterate over user's positions to find positions for the given campaign
+        for (uint256 i = 0; i < positionParams.length; i++) {
+            if (campaignIds[positionParams[i].poolId] == campaignId) {
+                IERC20 rewardToken = IERC20(campaigns[campaignId].rewardToken);
+                (uint256 rewards0, uint256 rewards1) = calculateRewards(positionParams[i], rewardToken);
+                totalRewards += rewards0 + rewards1;
+            }
+        }
+
+        // Return the reward struct for the user and the specified campaign
+        return Reward({
+            id: 0,
+            campaignId: campaignId,
+            user: user,
+            amount: totalRewards,
+            claimed: false,
+            claimedAt: 0
+        });
+    }
+
+    function claimReward(uint256 campaign) public {
         // Implementation to claim rewards
     }
 
@@ -263,12 +326,12 @@ contract Catapoolt is BrevisApp, Ownable {
         uint256 feeGrowthInside1X128;
         uint256 feesGrowthGlobal0X128;
         uint256 feesGrowthGlobal1X128;
-        uint256 blockNumber;
+        uint256 timestamp; // Replace blockNumber with timestamp
     }
 
     struct Values {
-        uint256 amountPerBlock;
-        uint256 nrOfBlocks;
+        uint256 amountPerSecond; // Changed from amountPerBlock to amountPerSecond
+        uint256 durationInSeconds;
     }
 
     mapping(bytes32 => WithdrawalSnapshot) public lastWithdrawals;
@@ -305,7 +368,7 @@ contract Catapoolt is BrevisApp, Ownable {
             feeGrowthInside1X128: position.feeGrowthInside1LastX128,
             feesGrowthGlobal0X128: feeGrowthGlobal0X128,
             feesGrowthGlobal1X128: feeGrowthGlobal1X128,
-            blockNumber: block.number
+            timestamp: block.timestamp // Use block.timestamp instead of block.number
         });
 
         // Transfer the rewards to the user
@@ -337,9 +400,9 @@ contract Catapoolt is BrevisApp, Ownable {
         );
 
         // Calculate total rewards since the last withdrawal of the user
-        uint256 blocksPassed = block.number - lastWithdrawal.blockNumber;
-        uint256 rewardPerBlock = rewards[params.poolId][rewardToken].amountPerBlock;
-        uint256 totalRewards = blocksPassed * rewardPerBlock;
+        uint256 timePassed = block.timestamp - lastWithdrawal.timestamp; // Use time difference in seconds
+        uint256 rewardPerSecond = rewards[params.poolId][rewardToken].amountPerSecond; // Use amountPerSecond instead of amountPerBlock
+        uint256 totalRewards = timePassed * rewardPerSecond;
 
         // Rewards are split equally between the two swap directions
         uint256 totalRewardsPerDirection = totalRewards / 2;
@@ -347,6 +410,15 @@ contract Catapoolt is BrevisApp, Ownable {
         // Calculate the amount of rewards the user can claim
         rewards0 = (feesGlobal0 == 0) ? 0 : FullMath.mulDiv(fees0, totalRewardsPerDirection, feesGlobal0);
         rewards1 = (feesGlobal1 == 0) ? 0 : FullMath.mulDiv(fees1, totalRewardsPerDirection, feesGlobal1);
+    }
+
+    function getRewards(
+        PoolId pool,
+        IERC20 rewardToken
+    ) external view returns (uint256, uint256) {
+        // PoolId poolId,
+        // IERC20 rewardToken
+
     }
 
     function toPositionId(PoolId poolId, address owner, int24 tickLower, int24 tickUpper, bytes32 salt) internal pure returns (bytes32) {
