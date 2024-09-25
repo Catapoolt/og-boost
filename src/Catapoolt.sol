@@ -29,14 +29,8 @@ contract Catapoolt is BrevisApp, Ownable {
         address rewardToken;
         uint256 startsAt;
         uint256 endsAt;
-    }
-
-    struct Multiplier {
-        uint256 campaignId;
-        // minimum amount of fees to be earned to get the multiplier
         uint256 earnedFeesAmount;
         address feeToken;
-        // multiplier expressed in basis points
         uint256 multiplier;
     }
     
@@ -196,7 +190,10 @@ contract Catapoolt is BrevisApp, Ownable {
             rewardAmount: _rewardAmount,
             rewardToken: _rewardToken,
             startsAt: _startsAt,
-            endsAt: _endsAt
+            endsAt: _endsAt,
+            earnedFeesAmount: earnedFeesAmount,
+            feeToken: feeToken,
+            multiplier: multiplierPercent
         });
 
         campaigns.push(newCampaign);
@@ -210,19 +207,7 @@ contract Catapoolt is BrevisApp, Ownable {
             _endsAt
         );
 
-        Multiplier memory multiplier = Multiplier({
-            campaignId: campaignsCount,
-            earnedFeesAmount: earnedFeesAmount,
-            feeToken: feeToken,
-            multiplier: multiplierPercent
-        });
-        createMultiplier(multiplier);
-
         campaignsCount++;
-    }
-
-    function createMultiplier(Multiplier memory multiplier) public {
-        // Create a new multiplier
     }
 
     function getCampaigns() public view returns (Campaign[] memory) {
@@ -234,7 +219,6 @@ contract Catapoolt is BrevisApp, Ownable {
         require(id < campaigns.length, "Campaign does not exist");
         return campaigns[id];
     }
-
 
     mapping(address => PositionParams[]) public userPositions;
     
