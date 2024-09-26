@@ -7,9 +7,9 @@ import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 contract Approves is Script {
     function run() external {
-
         string memory dev1PKey = getPKey("DEV1_KEY");
         address cake3Address = vm.envAddress("CAKE3");
+        address catapooltAddress = vm.envAddress("CATAPOOLT");
 
         address dev1 = getAddress(dev1PKey);
         MockERC20 cake3 = MockERC20(cake3Address);
@@ -19,7 +19,12 @@ contract Approves is Script {
 
         vm.startBroadcast();
 
-        cake3.approve(address(0x61bE9F9bbbf34D1CA94f3bAbc9486A04ac353f77), type(uint256).max);
+        cake3.approve(catapooltAddress, type(uint256).max);
+
+        // query and log approval amount
+        uint256 allowance = cake3.allowance(dev1, catapooltAddress);
+        console.log("Contract address:", catapooltAddress);
+        console.log("Approved CAKE3 amount:", allowance);
 
         vm.stopBroadcast();
     }
