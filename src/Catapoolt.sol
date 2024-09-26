@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.26;
 
 // Import OpenZeppelin's IERC20 and SafeERC20 libraries
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -10,6 +10,7 @@ import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
 import {CLPosition} from "pancake-v4-core/src/pool-cl/libraries/CLPosition.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "pancake-v4-core/src/types/BalanceDelta.sol";
 
 import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
 
@@ -18,7 +19,7 @@ import {CLBaseHook} from "./CLBaseHook.sol";
 import "brevis-sdk/apps/framework/BrevisApp.sol";
 import "brevis-sdk/interface/IBrevisProof.sol";
 
-contract Catapoolt is BrevisApp, Ownable {
+contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     using SafeERC20 for IERC20;
     using PoolIdLibrary for PoolKey;
 
@@ -71,10 +72,7 @@ contract Catapoolt is BrevisApp, Ownable {
     mapping(address => mapping(PoolId => uint256)) internal ogMultipliers;
 
 
-    ICLPoolManager public poolManager;
-
-    constructor(ICLPoolManager _poolManager, address _brevisRequest) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
-        poolManager = _poolManager;
+    constructor(ICLPoolManager _poolManager, address _brevisRequest)  CLBaseHook(_poolManager) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
     }
 
     ////////////////////////////////////////
@@ -130,26 +128,47 @@ contract Catapoolt is BrevisApp, Ownable {
     // HOOK FUNCTIONS                     //    
     ////////////////////////////////////////
 
-    // function getHooksRegistrationBitmap() external pure override returns (uint16) {
-    //     return _hooksRegistrationBitmapFrom(
-    //         Permissions({
-    //             beforeInitialize: false,
-    //             afterInitialize: false,
-    //             beforeAddLiquidity: false,
-    //             afterAddLiquidity: false,
-    //             beforeRemoveLiquidity: false,
-    //             afterRemoveLiquidity: false,
-    //             beforeSwap: false,
-    //             afterSwap: false,
-    //             beforeDonate: false,
-    //             afterDonate: false,
-    //             beforeSwapReturnsDelta: false,
-    //             afterSwapReturnsDelta: false,
-    //             afterAddLiquidityReturnsDelta: false,
-    //             afterRemoveLiquidityReturnsDelta: false
-    //         })
-    //     );
-    // }
+    function getHooksRegistrationBitmap() external pure override returns (uint16) {
+        return _hooksRegistrationBitmapFrom(
+            Permissions({
+                beforeInitialize: false,
+                afterInitialize: false,
+                beforeAddLiquidity: false,
+                afterAddLiquidity: true,
+                beforeRemoveLiquidity: true,
+                afterRemoveLiquidity: false,
+                beforeSwap: false,
+                afterSwap: false,
+                beforeDonate: false,
+                afterDonate: false,
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidityReturnsDelta: false,
+                afterRemoveLiquidityReturnsDelta: false
+            })
+        );
+    }
+
+    function afterAddLiquidity(
+        address,
+        PoolKey calldata,
+        ICLPoolManager.ModifyLiquidityParams calldata,
+        BalanceDelta,
+        BalanceDelta,
+        bytes calldata
+    ) external override pure returns (bytes4, BalanceDelta) {
+        revert HookNotImplemented();
+    }
+
+    function beforeRemoveLiquidity(
+        address,
+        PoolKey calldata,
+        ICLPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata
+    ) external override pure returns (bytes4) {
+        revert HookNotImplemented();
+    }
+
 
 
     ////////////////////////////////////////
@@ -174,7 +193,7 @@ contract Catapoolt is BrevisApp, Ownable {
         uint256 earnedFeesAmount,
         address feeToken,
         uint256 multiplierPercent
-    ) external {
+    ) external returns (uint256) {
         require(_rewardToken != address(0), "Invalid reward token address");
         require(_endsAt > _startsAt, "End time must be after start time");
         require(_rewardAmount > 0, "Reward amount must be greater than zero");
@@ -183,9 +202,11 @@ contract Catapoolt is BrevisApp, Ownable {
         IERC20 rewardToken = IERC20(_rewardToken);
         rewardToken.safeTransferFrom(msg.sender, address(this), _rewardAmount);
 
+        uint256 campaignId = campaignsCount;
+
         // Create the campaign
         Campaign memory newCampaign = Campaign({
-            id: campaignsCount,
+            id: campaignId,
             pool: _pool,
             rewardAmount: _rewardAmount,
             rewardToken: _rewardToken,
@@ -199,7 +220,7 @@ contract Catapoolt is BrevisApp, Ownable {
         campaigns.push(newCampaign);
 
         emit CampaignCreated(
-            campaignsCount,
+            campaignId,
             _pool,
             _rewardAmount,
             _rewardToken,
@@ -208,6 +229,7 @@ contract Catapoolt is BrevisApp, Ownable {
         );
 
         campaignsCount++;
+        return campaignId;
     }
 
     function getCampaigns() public view returns (Campaign[] memory) {
