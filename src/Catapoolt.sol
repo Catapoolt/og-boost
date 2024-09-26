@@ -193,7 +193,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         uint256 earnedFeesAmount,
         address feeToken,
         uint256 multiplierPercent
-    ) external {
+    ) external returns (uint256) {
         require(_rewardToken != address(0), "Invalid reward token address");
         require(_endsAt > _startsAt, "End time must be after start time");
         require(_rewardAmount > 0, "Reward amount must be greater than zero");
@@ -202,9 +202,11 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         IERC20 rewardToken = IERC20(_rewardToken);
         rewardToken.safeTransferFrom(msg.sender, address(this), _rewardAmount);
 
+        uint256 campaignId = campaignsCount;
+
         // Create the campaign
         Campaign memory newCampaign = Campaign({
-            id: campaignsCount,
+            id: campaignId,
             pool: _pool,
             rewardAmount: _rewardAmount,
             rewardToken: _rewardToken,
@@ -218,7 +220,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         campaigns.push(newCampaign);
 
         emit CampaignCreated(
-            campaignsCount,
+            campaignId,
             _pool,
             _rewardAmount,
             _rewardToken,
@@ -227,6 +229,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         );
 
         campaignsCount++;
+        return campaignId;
     }
 
     function getCampaigns() public view returns (Campaign[] memory) {
