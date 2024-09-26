@@ -37,11 +37,18 @@ contract DeployCatapoolt is Script {
     UniversalRouter universalRouter;
 
     function run() external {
+        vault = Vault(vm.envAddress("VAULT"));
+        console.log("Loaded Vault at:", address(vault));
+        poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
+        console.log("Loaded Pool Manager at:", address(poolManager));
+        positionManager = CLPositionManager(vm.envAddress("POSITION_MANAGER"));
+        console.log("Loaded Position Manager at:", address(positionManager));
+        universalRouter = UniversalRouter(payable(vm.envAddress("UNIVERSAL_ROUTER")));
+        console.log("Loaded Universal Router at:", address(universalRouter));
+
         address catapooltAddress = vm.envAddress("CATAPOOLT");
         address wbnbAddress = vm.envAddress("WBNB");
         address cake3Address = vm.envAddress("CAKE3");
-
-        address poolManagerAddress = vm.envAddress("POOL_MANAGER");
 
         string memory person = vm.envString("PERSON");
         console.log("Person:", person);
@@ -50,11 +57,12 @@ contract DeployCatapoolt is Script {
         console.log("Address for", person, "is:", personAddress);
 
         MockERC20 wbnb = MockERC20(wbnbAddress);
+        console.log("Loaded WBNB at:", address(wbnb));
         MockERC20 cake3 = MockERC20(cake3Address);
+        console.log("Loaded CAKE3 at:", address(cake3));
 
         Catapoolt catapoolt = Catapoolt(catapooltAddress);
         console.log("Loaded Catapoolt at:", address(catapoolt));
-        poolManager = CLPoolManager(poolManagerAddress);
 
         (Currency currency0, Currency currency1) = SortTokens.sort(wbnb, cake3);
 
@@ -75,13 +83,12 @@ contract DeployCatapoolt is Script {
         uint128 amount0Max = 0.01 ether;
         uint128 amount1Max = 0.01 ether;
         int24 tickLower = -120;
-        int24 tickUpper = -120;
+        int24 tickUpper = 120;
         address recipient = personAddress;
 
         vm.startBroadcast(personPKey);
-        cake3.approve(catapooltAddress, type(uint256).max);
-        wbnb.approve(catapooltAddress, type(uint256).max);
-
+        cake3.approve(address(positionManager), type(uint256).max);
+        wbnb.approve(address(positionManager), type(uint256).max);
 
         uint256 tokenId = addLiquidity(key, amount0Max, amount1Max, tickLower, tickUpper, recipient);
         console.log("Added liquidity. Returned token ID:", tokenId);
@@ -100,6 +107,7 @@ contract DeployCatapoolt is Script {
         tokenId = positionManager.nextTokenId();
 
         (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
+
         uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(tickLower),
@@ -107,6 +115,7 @@ contract DeployCatapoolt is Script {
             amount0Max,
             amount1Max
         );
+        
         PositionConfig memory config = PositionConfig({poolKey: key, tickLower: tickLower, tickUpper: tickUpper});
         Plan memory planner = Planner.init().add(
             Actions.CL_MINT_POSITION, abi.encode(config, liquidity, amount0Max, amount1Max, recipient, new bytes(0))

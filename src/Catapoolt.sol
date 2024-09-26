@@ -157,7 +157,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         BalanceDelta,
         bytes calldata
     ) external override pure returns (bytes4, BalanceDelta) {
-        revert HookNotImplemented();
+        return (this.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
     function beforeRemoveLiquidity(
@@ -166,7 +166,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         ICLPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
     ) external override pure returns (bytes4) {
-        revert HookNotImplemented();
+        return this.beforeRemoveLiquidity.selector;
     }
 
 
