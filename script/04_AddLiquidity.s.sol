@@ -22,6 +22,7 @@ import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
 import {PositionConfig} from "../test/utils/PositionConfig.sol";
 import {Planner, Plan} from "pancake-v4-periphery/src/libraries/Planner.sol";
 import {Actions} from "pancake-v4-periphery/src/libraries/Actions.sol";
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -36,6 +37,8 @@ contract DeployCatapoolt is Script {
     CLPositionManager positionManager;
     UniversalRouter universalRouter;
 
+    IAllowanceTransfer permit2;
+
     function run() external {
         vault = Vault(vm.envAddress("VAULT"));
         console.log("Loaded Vault at:", address(vault));
@@ -45,6 +48,7 @@ contract DeployCatapoolt is Script {
         console.log("Loaded Position Manager at:", address(positionManager));
         universalRouter = UniversalRouter(payable(vm.envAddress("UNIVERSAL_ROUTER")));
         console.log("Loaded Universal Router at:", address(universalRouter));
+        permit2 = IAllowanceTransfer(vm.envAddress("PERMIT2"));
 
         address catapooltAddress = vm.envAddress("CATAPOOLT");
         address wbnbAddress = vm.envAddress("WBNB");
@@ -87,9 +91,21 @@ contract DeployCatapoolt is Script {
         address recipient = personAddress;
 
         vm.startBroadcast(personPKey);
+        
+        // Approvals
         cake3.approve(address(positionManager), type(uint256).max);
         wbnb.approve(address(positionManager), type(uint256).max);
 
+        cake3.approve(address(permit2), type(uint256).max);
+        wbnb.approve(address(permit2), type(uint256).max);
+
+        permit2.approve(address(cake3), address(positionManager), type(uint160).max, type(uint48).max);
+        permit2.approve(address(wbnb), address(positionManager), type(uint160).max, type(uint48).max);
+
+        permit2.approve(address(cake3), address(universalRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(wbnb), address(universalRouter), type(uint160).max, type(uint48).max);
+
+        // Add liquidity
         uint256 tokenId = addLiquidity(key, amount0Max, amount1Max, tickLower, tickUpper, recipient);
         console.log("Added liquidity. Returned token ID:", tokenId);
 
