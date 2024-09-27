@@ -84,8 +84,8 @@ contract DeployCatapoolt is Script {
         PoolId id = key.toId();
         string memory hashStr = Strings.toHexString(uint256(uint256(PoolId.unwrap(id))), 32);
         console.log("Pool ID:", hashStr);
-        uint128 amount0Max = 0.01 ether;
-        uint128 amount1Max = 0.01 ether;
+        uint128 amount0Max = 0.001 ether;
+        uint128 amount1Max = 0.001 ether;
         int24 tickLower = -120;
         int24 tickUpper = 120;
         address recipient = personAddress;
@@ -94,10 +94,22 @@ contract DeployCatapoolt is Script {
         
         // Approvals
         cake3.approve(address(positionManager), type(uint256).max);
+        // query and log approval amount
+        uint256 cake3Allowance = cake3.allowance(personAddress, address(positionManager));
+        console.log("Approved CAKE3 amount:", cake3Allowance);
         wbnb.approve(address(positionManager), type(uint256).max);
+        // query and log approval amount
+        uint256 wbnbAllowance = wbnb.allowance(personAddress, address(positionManager));
+        console.log("Approved WBNB amount:", wbnbAllowance);
 
         cake3.approve(address(permit2), type(uint256).max);
+        // query and log approval amount
+        uint256 cake3Allowance2 = cake3.allowance(personAddress, address(permit2));
+        console.log("Approved CAKE3 amount for Permit2:", cake3Allowance2);
         wbnb.approve(address(permit2), type(uint256).max);
+        // query and log approval amount
+        uint256 wbnbAllowance2 = wbnb.allowance(personAddress, address(permit2));
+        console.log("Approved WBNB amount for Permit2:", wbnbAllowance2);
 
         permit2.approve(address(cake3), address(positionManager), type(uint160).max, type(uint48).max);
         permit2.approve(address(wbnb), address(positionManager), type(uint160).max, type(uint48).max);
@@ -137,7 +149,7 @@ contract DeployCatapoolt is Script {
             Actions.CL_MINT_POSITION, abi.encode(config, liquidity, amount0Max, amount1Max, recipient, new bytes(0))
         );
         bytes memory data = planner.finalizeModifyLiquidityWithClose(key);
-        positionManager.modifyLiquidities(data, block.timestamp);
+        positionManager.modifyLiquidities(data, block.timestamp + 1 minutes);
     }
 
     // Function to map a person name to the private key and derive the corresponding address
