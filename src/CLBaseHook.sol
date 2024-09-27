@@ -129,7 +129,6 @@ abstract contract CLBaseHook is ICLHooks {
         PoolKey calldata,
         ICLPoolManager.ModifyLiquidityParams calldata,
         BalanceDelta,
-        BalanceDelta,
         bytes calldata
     ) external virtual returns (bytes4, BalanceDelta) {
         console.log("afterAddLiquidity");
@@ -150,7 +149,6 @@ abstract contract CLBaseHook is ICLHooks {
         address,
         PoolKey calldata,
         ICLPoolManager.ModifyLiquidityParams calldata,
-        BalanceDelta,
         BalanceDelta,
         bytes calldata
     ) external virtual returns (bytes4, BalanceDelta) {

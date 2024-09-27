@@ -10,13 +10,14 @@ import {Constants} from "pancake-v4-core/test/pool-cl/helpers/Constants.sol";
 import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
-import {PoolId} from "pancake-v4-core/src/types/PoolId.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract DeployCatapoolt is Script {
 
     using CLPoolParametersHelper for bytes32;
+    using PoolIdLibrary for PoolKey;
 
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");

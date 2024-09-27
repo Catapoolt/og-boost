@@ -37,11 +37,11 @@ contract CLTestUtils is DeployPermit2 {
 
     function deployContractsWithTokens() internal returns (Currency, Currency) {
         vault = new Vault();
-        poolManager = new CLPoolManager(vault);
+        poolManager = new CLPoolManager(vault, 500000);
         vault.registerApp(address(poolManager));
 
         permit2 = IAllowanceTransfer(deployPermit2());
-        positionManager = new CLPositionManager(vault, poolManager, permit2, 500000);
+        positionManager = new CLPositionManager(vault, poolManager, permit2);
 
         RouterParameters memory params = RouterParameters({
             permit2: address(permit2),

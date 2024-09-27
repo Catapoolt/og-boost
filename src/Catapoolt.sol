@@ -156,7 +156,6 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         PoolKey calldata,
         ICLPoolManager.ModifyLiquidityParams calldata,
         BalanceDelta,
-        BalanceDelta,
         bytes calldata
     ) external override pure returns (bytes4, BalanceDelta) {
         console.log("CATAPOOLT: afterAddLiquidity");
