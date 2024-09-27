@@ -96,20 +96,16 @@ contract DeployCatapoolt is Script {
         cake3.approve(address(positionManager), type(uint256).max);
         // query and log approval amount
         uint256 cake3Allowance = cake3.allowance(personAddress, address(positionManager));
-        console.log("Approved CAKE3 amount:", cake3Allowance);
         wbnb.approve(address(positionManager), type(uint256).max);
         // query and log approval amount
         uint256 wbnbAllowance = wbnb.allowance(personAddress, address(positionManager));
-        console.log("Approved WBNB amount:", wbnbAllowance);
 
         cake3.approve(address(permit2), type(uint256).max);
         // query and log approval amount
         uint256 cake3Allowance2 = cake3.allowance(personAddress, address(permit2));
-        console.log("Approved CAKE3 amount for Permit2:", cake3Allowance2);
         wbnb.approve(address(permit2), type(uint256).max);
         // query and log approval amount
         uint256 wbnbAllowance2 = wbnb.allowance(personAddress, address(permit2));
-        console.log("Approved WBNB amount for Permit2:", wbnbAllowance2);
 
         permit2.approve(address(cake3), address(positionManager), type(uint160).max, type(uint48).max);
         permit2.approve(address(wbnb), address(positionManager), type(uint160).max, type(uint48).max);
@@ -119,7 +115,6 @@ contract DeployCatapoolt is Script {
 
         // Add liquidity
         uint256 tokenId = addLiquidity(key, amount0Max, amount1Max, tickLower, tickUpper, recipient);
-        console.log("Added liquidity. Returned token ID:", tokenId);
 
         vm.stopBroadcast();    
     }
