@@ -25,6 +25,7 @@ import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
 import {ICLHooks} from "pancake-v4-core/src/pool-cl/interfaces/ICLHooks.sol";
 import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
 import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
+import "forge-std/Script.sol";
 
 abstract contract CLBaseHook is ICLHooks {
     error NotPoolManager();
@@ -100,6 +101,7 @@ abstract contract CLBaseHook is ICLHooks {
     }
 
     function beforeInitialize(address, PoolKey calldata, uint160, bytes calldata) external virtual returns (bytes4) {
+        console.log("beforeInitialize");
         revert HookNotImplemented();
     }
 
@@ -108,6 +110,7 @@ abstract contract CLBaseHook is ICLHooks {
         virtual
         returns (bytes4)
     {
+        console.log("afterInitialize");
         revert HookNotImplemented();
     }
 
@@ -117,6 +120,7 @@ abstract contract CLBaseHook is ICLHooks {
         ICLPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
     ) external virtual returns (bytes4) {
+        console.log("beforeAddLiquidity");
         revert HookNotImplemented();
     }
 
@@ -128,6 +132,7 @@ abstract contract CLBaseHook is ICLHooks {
         BalanceDelta,
         bytes calldata
     ) external virtual returns (bytes4, BalanceDelta) {
+        console.log("afterAddLiquidity");
         revert HookNotImplemented();
     }
 
@@ -137,6 +142,7 @@ abstract contract CLBaseHook is ICLHooks {
         ICLPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
     ) external virtual returns (bytes4) {
+        console.log("beforeRemoveLiquidity");
         revert HookNotImplemented();
     }
 
@@ -148,6 +154,7 @@ abstract contract CLBaseHook is ICLHooks {
         BalanceDelta,
         bytes calldata
     ) external virtual returns (bytes4, BalanceDelta) {
+        console.log("afterRemoveLiquidity");
         revert HookNotImplemented();
     }
 
@@ -156,6 +163,7 @@ abstract contract CLBaseHook is ICLHooks {
         virtual
         returns (bytes4, BeforeSwapDelta, uint24)
     {
+        console.log("beforeSwap");
         revert HookNotImplemented();
     }
 
@@ -164,6 +172,7 @@ abstract contract CLBaseHook is ICLHooks {
         virtual
         returns (bytes4, int128)
     {
+        console.log("afterSwap");
         revert HookNotImplemented();
     }
 
@@ -172,6 +181,7 @@ abstract contract CLBaseHook is ICLHooks {
         virtual
         returns (bytes4)
     {
+        console.log("beforeDonate");
         revert HookNotImplemented();
     }
 
@@ -180,6 +190,7 @@ abstract contract CLBaseHook is ICLHooks {
         virtual
         returns (bytes4)
     {
+        console.log("afterDonate");
         revert HookNotImplemented();
     }
 

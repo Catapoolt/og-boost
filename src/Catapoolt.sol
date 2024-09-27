@@ -19,6 +19,8 @@ import {CLBaseHook} from "./CLBaseHook.sol";
 import "brevis-sdk/apps/framework/BrevisApp.sol";
 import "brevis-sdk/interface/IBrevisProof.sol";
 
+import "forge-std/Script.sol";
+
 contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     using SafeERC20 for IERC20;
     using PoolIdLibrary for PoolKey;
@@ -134,9 +136,9 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
                 beforeInitialize: false,
                 afterInitialize: false,
                 beforeAddLiquidity: false,
-                afterAddLiquidity: false,
+                afterAddLiquidity: true,
                 beforeRemoveLiquidity: false,
-                afterRemoveLiquidity: false,
+                afterRemoveLiquidity: true,
                 beforeSwap: false,
                 afterSwap: false,
                 beforeDonate: false,
@@ -157,6 +159,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         BalanceDelta,
         bytes calldata
     ) external override pure returns (bytes4, BalanceDelta) {
+        console.log("CATAPOOLT: afterAddLiquidity");
         return (this.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
@@ -166,6 +169,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         ICLPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
     ) external override pure returns (bytes4) {
+        console.log("CATAPOOLT: beforeRemoveLiquidity");
         return this.beforeRemoveLiquidity.selector;
     }
 
