@@ -65,7 +65,7 @@ BREVIS_REQUEST=<Brevis_Request_Address>
 ```
 
 ### Catapoolt contract (BNB Chain Testnet)
-`0x9248b121F2a7957414dBE436359FD02B15F26E40`
+`0x37BFA1be7AE1C9231B831324D35Cbbb3E2329a51`
 
 ##### Dependencies
 CLPoolManager `0x969D90aC74A1a5228b66440f8C8326a8dA47A5F9`
