@@ -14,7 +14,7 @@ import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 contract DeployCatapoolt is Script {
     using CLPoolParametersHelper for bytes32;
 
-    bytes32 public constant POOL_ID = 0x525be2ac239d9cb3a727d0c532cba071a4b346b552bd4ac88e8d53f76ea6a3fd;
+    bytes32 public constant POOL_ID = 0x62c82eb6e1ac399fbc6a3c7dd90db3b0ad9cb8b4939f7679d085fb4b3c1a8f24;
 
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
