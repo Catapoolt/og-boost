@@ -15,6 +15,7 @@ import {BalanceDelta, BalanceDeltaLibrary} from "pancake-v4-core/src/types/Balan
 import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
 
 import {CLBaseHook} from "./CLBaseHook.sol";
+import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionManager.sol";
 
 import "brevis-sdk/apps/framework/BrevisApp.sol";
 import "brevis-sdk/interface/IBrevisProof.sol";
@@ -46,6 +47,13 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         uint256 claimedAt;
     }
 
+    struct RewardClaim{
+        uint256 campaignId;
+        address user;
+        uint256 amount;
+        uint256 claimedAt;
+    }
+
     struct Offering {
         address currency;
         uint256 amount;
@@ -73,8 +81,10 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     mapping(address => uint256) internal offeringLengths;
     mapping(address => mapping(PoolId => uint256)) internal ogMultipliers;
 
+    CLPositionManager positionManager;
 
-    constructor(ICLPoolManager _poolManager, address _brevisRequest)  CLBaseHook(_poolManager) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
+    constructor(ICLPoolManager _poolManager, CLPositionManager _positionManager, address _brevisRequest)  CLBaseHook(_poolManager) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
+        positionManager = _positionManager;
     }
 
     ////////////////////////////////////////
@@ -152,13 +162,33 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     }
 
     function afterAddLiquidity(
-        address,
-        PoolKey calldata,
-        ICLPoolManager.ModifyLiquidityParams calldata,
+        address caller,
+        PoolKey calldata poolKey,
+        ICLPoolManager.ModifyLiquidityParams calldata modLiqParams,
         BalanceDelta,
         bytes calldata
-    ) external override pure returns (bytes4, BalanceDelta) {
+    ) external override returns (bytes4, BalanceDelta) {
         console.log("CATAPOOLT: afterAddLiquidity");
+
+        PoolId poolId = poolKey.toId();
+
+        uint256 tokenId = uint256(modLiqParams.salt);
+        address owner = positionManager.ownerOf(tokenId);
+        console.log("POSITION Owner:", owner);
+        int24 tickLower = modLiqParams.tickLower;
+        int24 tickUpper = modLiqParams.tickUpper;
+        bytes32 salt = modLiqParams.salt;
+
+        PositionParams memory positionParams = PositionParams({
+            poolId: poolId,
+            owner: owner,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            salt: salt
+        });
+
+        userPositions[owner].push(positionParams);
+
         return (this.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
@@ -221,6 +251,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         });
 
         campaigns.push(newCampaign);
+        campaignIds[_pool] = campaignId;
 
         emit CampaignCreated(
             campaignId,
@@ -313,8 +344,31 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         });
     }
 
+    mapping(address => RewardClaim[]) public rewardClaims;
+    mapping(address => uint256) public rewardClaimsCount;
+
     function claimReward(uint256 campaign) public {
-        // Implementation to claim rewards
+        Campaign memory _campaign = campaigns[campaign];
+        IERC20 rewardToken = IERC20(_campaign.rewardToken);
+        
+        Reward memory reward = listRewards(msg.sender, campaign);
+        require(reward.amount > 0, "No rewards to claim");
+        require(rewardToken.balanceOf(address(this)) >= reward.amount, "Insufficient contract balance");
+
+        rewardToken.transfer(msg.sender, reward.amount);
+        // Update campaign balance
+        campaigns[campaign].rewardAmount -= reward.amount;
+
+        // Store history of claimed rewards
+        RewardClaim memory claimed = RewardClaim({
+            campaignId: campaign,
+            user: msg.sender,
+            amount: reward.amount,
+            claimedAt: block.timestamp
+        });
+
+        rewardClaims[msg.sender].push(claimed);
+        rewardClaimsCount[msg.sender]++;
     }
 
 

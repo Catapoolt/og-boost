@@ -13,6 +13,7 @@ import {CLTestUtils} from "./utils/CLTestUtils.sol";
 import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
+import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionManager.sol";
 import "forge-std/Console.sol";
 
 contract Demo is Test, CLTestUtils {
@@ -28,7 +29,7 @@ contract Demo is Test, CLTestUtils {
         (currency0, currency1) = deployContractsWithTokens();
 
         // TODO MockBrevisProof?
-        hook = new Catapoolt(poolManager, address(0));
+        hook = new Catapoolt(poolManager, CLPositionManager(address(0)), address(0));
 
         // create the pool key
         key = PoolKey({
@@ -52,8 +53,8 @@ contract Demo is Test, CLTestUtils {
         MockERC20(Currency.unwrap(currency0)).mint(address(this), 1 ether);
         MockERC20(Currency.unwrap(currency1)).mint(address(this), 1 ether);
         
-        uint256 tokenId = addLiquidity(key, 1 ether, 1 ether, -60, 60, address(this));
-        console.log("Token ID:", tokenId);
+        // uint256 tokenId = addLiquidity(key, 1 ether, 1 ether, -60, 60, address(this));
+        // console.log("Token ID:", tokenId);
 
         // assertEq(hook.beforeAddLiquidityCount(key.toId()), 1);
         // assertEq(hook.afterAddLiquidityCount(key.toId()), 1);
