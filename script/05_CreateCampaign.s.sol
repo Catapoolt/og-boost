@@ -14,6 +14,8 @@ import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 contract DeployCatapoolt is Script {
     using CLPoolParametersHelper for bytes32;
 
+    bytes32 public constant POOL_ID = 0x525be2ac239d9cb3a727d0c532cba071a4b346b552bd4ac88e8d53f76ea6a3fd;
+
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
         address cake3Address = vm.envAddress("CAKE3");
@@ -25,16 +27,14 @@ contract DeployCatapoolt is Script {
         MockERC20 cake3 = MockERC20(cake3Address);
 
         // PARAMETERS
-        PoolId poolId = PoolId.wrap(
-            0x48d1d3d5b41db6da10e6d68317a3bfb6257d3d015dfb607e1fec80a4d9751ecb
-        );
+        PoolId poolId = PoolId.wrap(POOL_ID);
         uint256 rewardAmount = 1 ether;
         address rewardToken = cake3Address;
         uint256 startsAt = block.timestamp;
         uint256 endsAt = block.timestamp + 1 days;
-        uint256 earnedFeesAmount = 0.001 ether;
+        uint256 earnedFeesAmount = 0.00000001 ether;
         address feeToken = wbnbAddress;
-        uint256 multiplierPercent = 250;
+        uint256 multiplierPercent = 255;
 
         vm.startBroadcast();
         // Approve cake3 to Catapoolt

@@ -27,6 +27,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract Swaps is Script {
 
+    bytes32 public constant POOL_ID = 0x525be2ac239d9cb3a727d0c532cba071a4b346b552bd4ac88e8d53f76ea6a3fd;
+
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
         address wbnbAddress = vm.envAddress("WBNB");
@@ -56,16 +58,23 @@ contract Swaps is Script {
             console.log("\n");
         }
 
-        console.log("Alice's rewards BELOW: ");
-        Catapoolt.Reward[] memory aliceRew = catapoolt.listRewards(alice);
-        for (uint i = 0; i < aliceRew.length; i++) {
-            console.log("Reward: ", aliceRew[i].amount);
-        }
+        // Multiplier checks
+        PoolId poolId = PoolId.wrap(POOL_ID);
 
-        console.log("Bob's rewards BELOW: ");
-        Catapoolt.Reward[] memory bobRew = catapoolt.listRewards(bob);
-        for (uint i = 0; i < bobRew.length; i++) {
-            console.log("Reward: ", bobRew[i].amount);
-        }
+        address potentialOG = 0x0da8B226E31E55B5265c11B3CE8da776f5dDAd02;
+        uint256 multiplier = catapoolt.ogMultipliers(potentialOG, poolId);
+        console.log("Multiplier for potential OG: ", multiplier);
+
+        // console.log("Alice's rewards BELOW: ");
+        // Catapoolt.Reward[] memory aliceRew = catapoolt.listRewards(alice);
+        // for (uint i = 0; i < aliceRew.length; i++) {
+        //     console.log("Reward: ", aliceRew[i].amount);
+        // }
+
+        // console.log("Bob's rewards BELOW: ");
+        // Catapoolt.Reward[] memory bobRew = catapoolt.listRewards(bob);
+        // for (uint i = 0; i < bobRew.length; i++) {
+        //     console.log("Reward: ", bobRew[i].amount);
+        // }
     }
 }
