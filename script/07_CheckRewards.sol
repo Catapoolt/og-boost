@@ -56,16 +56,25 @@ contract Swaps is Script {
             console.log("\n");
         }
 
-        console.log("Alice's rewards BELOW: ");
-        Catapoolt.Reward[] memory aliceRew = catapoolt.listRewards(alice);
-        for (uint i = 0; i < aliceRew.length; i++) {
-            console.log("Reward: ", aliceRew[i].amount);
-        }
+        // Multiplier checks
+        PoolId poolId = PoolId.wrap(
+            0x48d1d3d5b41db6da10e6d68317a3bfb6257d3d015dfb607e1fec80a4d9751ecb
+        );
 
-        console.log("Bob's rewards BELOW: ");
-        Catapoolt.Reward[] memory bobRew = catapoolt.listRewards(bob);
-        for (uint i = 0; i < bobRew.length; i++) {
-            console.log("Reward: ", bobRew[i].amount);
-        }
+        address potentialOG = 0x0da8B226E31E55B5265c11B3CE8da776f5dDAd02;
+        uint256 multiplier = catapoolt.ogMultipliers(potentialOG, poolId);
+        console.log("Multiplier for potential OG: ", multiplier);
+
+        // console.log("Alice's rewards BELOW: ");
+        // Catapoolt.Reward[] memory aliceRew = catapoolt.listRewards(alice);
+        // for (uint i = 0; i < aliceRew.length; i++) {
+        //     console.log("Reward: ", aliceRew[i].amount);
+        // }
+
+        // console.log("Bob's rewards BELOW: ");
+        // Catapoolt.Reward[] memory bobRew = catapoolt.listRewards(bob);
+        // for (uint i = 0; i < bobRew.length; i++) {
+        //     console.log("Reward: ", bobRew[i].amount);
+        // }
     }
 }
