@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-
-
 import "forge-std/Script.sol";
 import "../src/Catapoolt.sol"; // Path to the contract
 // import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -13,41 +11,36 @@ import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 import {PoolId} from "pancake-v4-core/src/types/PoolId.sol";
-import {Vault} from "pancake-v4-core/src/Vault.sol";
 import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
-import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionManager.sol";
 import {UniversalRouter, RouterParameters} from "pancake-v4-universal-router/src/UniversalRouter.sol";
+import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
 import {LiquidityAmounts} from "pancake-v4-periphery/src/pool-cl/libraries/LiquidityAmounts.sol";
 import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
 import {PositionConfig} from "../test/utils/PositionConfig.sol";
 import {Planner, Plan} from "pancake-v4-periphery/src/libraries/Planner.sol";
 import {Actions} from "pancake-v4-periphery/src/libraries/Actions.sol";
+import {ActionConstants} from "pancake-v4-periphery/src/libraries/ActionConstants.sol";
+import {Commands} from "pancake-v4-universal-router/src/libraries/Commands.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-contract DeployCatapoolt is Script {
+contract Swaps is Script {
 
     using CLPoolParametersHelper for bytes32;
     using Planner for Plan;
     using PoolIdLibrary for PoolKey;
 
-    Vault vault;
-    CLPoolManager poolManager;
-    CLPositionManager positionManager;
     UniversalRouter universalRouter;
+    CLPoolManager poolManager;
 
     IAllowanceTransfer permit2;
 
     function run() external {
-        vault = Vault(vm.envAddress("VAULT"));
-        console.log("Loaded Vault at:", address(vault));
-        poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
-        console.log("Loaded Pool Manager at:", address(poolManager));
-        positionManager = CLPositionManager(vm.envAddress("POSITION_MANAGER"));
-        console.log("Loaded Position Manager at:", address(positionManager));
         universalRouter = UniversalRouter(payable(vm.envAddress("UNIVERSAL_ROUTER")));
         console.log("Loaded Universal Router at:", address(universalRouter));
+        poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
+        console.log("Loaded Pool Manager at:", address(poolManager));
         permit2 = IAllowanceTransfer(vm.envAddress("PERMIT2"));
 
         address catapooltAddress = vm.envAddress("CATAPOOLT");
@@ -84,22 +77,10 @@ contract DeployCatapoolt is Script {
         PoolId id = key.toId();
         string memory hashStr = Strings.toHexString(uint256(uint256(PoolId.unwrap(id))), 32);
         console.log("Pool ID:", hashStr);
-        uint128 amount0Max = 0.001 ether;
-        uint128 amount1Max = 0.001 ether;
-        int24 tickLower = -120;
-        int24 tickUpper = 120;
-        address recipient = personAddress;
 
         vm.startBroadcast(personPKey);
-        
-        // Approvals
-        cake3.approve(address(positionManager), type(uint256).max);
-        // query and log approval amount
-        uint256 cake3Allowance = cake3.allowance(personAddress, address(positionManager));
-        wbnb.approve(address(positionManager), type(uint256).max);
-        // query and log approval amount
-        uint256 wbnbAllowance = wbnb.allowance(personAddress, address(positionManager));
 
+        // Approvals
         cake3.approve(address(permit2), type(uint256).max);
         // query and log approval amount
         uint256 cake3Allowance2 = cake3.allowance(personAddress, address(permit2));
@@ -107,45 +88,48 @@ contract DeployCatapoolt is Script {
         // query and log approval amount
         uint256 wbnbAllowance2 = wbnb.allowance(personAddress, address(permit2));
 
-        permit2.approve(address(cake3), address(positionManager), type(uint160).max, type(uint48).max);
-        permit2.approve(address(wbnb), address(positionManager), type(uint160).max, type(uint48).max);
 
-        permit2.approve(address(cake3), address(universalRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(wbnb), address(universalRouter), type(uint160).max, type(uint48).max);
+        (uint160 allowance0, ,) = permit2.allowance(personAddress, Currency.unwrap(currency0), address(universalRouter));
+        console.log("Allowance for currency0:", allowance0);
+        if(allowance0 == 0) {
+            permit2.approve(Currency.unwrap(currency0), address(universalRouter), type(uint160).max, type(uint48).max);
+        }
 
-        // Add liquidity
-        uint256 tokenId = addLiquidity(key, amount0Max, amount1Max, tickLower, tickUpper, recipient);
+        (uint160 allowance1, ,) = permit2.allowance(personAddress, Currency.unwrap(currency1), address(universalRouter));
+        console.log("Allowance for currency1:", allowance1);
+        if(allowance1 == 0) {
+            permit2.approve(Currency.unwrap(currency1), address(universalRouter), type(uint160).max, type(uint48).max);
+        }
+
+        // Swap
+        exactInputSingle(
+            ICLRouterBase.CLSwapExactInputSingleParams({
+                poolKey: key,
+                zeroForOne: true,
+                amountIn: 0.001 ether,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0,
+                hookData: new bytes(0)
+            })
+        );
+
 
         vm.stopBroadcast();    
     }
 
-    function addLiquidity(
-        PoolKey memory key,
-        uint128 amount0Max,
-        uint128 amount1Max,
-        int24 tickLower,
-        int24 tickUpper,
-        address recipient
-    ) internal returns (uint256 tokenId) {
-        tokenId = positionManager.nextTokenId();
+    function exactInputSingle(ICLRouterBase.CLSwapExactInputSingleParams memory params) internal {
+        Plan memory plan = Planner.init().add(Actions.CL_SWAP_EXACT_IN_SINGLE, abi.encode(params));
+        bytes memory data = params.zeroForOne
+            ? plan.finalizeSwap(params.poolKey.currency0, params.poolKey.currency1, ActionConstants.MSG_SENDER)
+            : plan.finalizeSwap(params.poolKey.currency1, params.poolKey.currency0, ActionConstants.MSG_SENDER);
 
-        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
+        bytes memory commands = abi.encodePacked(bytes1(uint8(Commands.V4_SWAP)));
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = data;
 
-        uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            amount0Max,
-            amount1Max
-        );
-        
-        PositionConfig memory config = PositionConfig({poolKey: key, tickLower: tickLower, tickUpper: tickUpper});
-        Plan memory planner = Planner.init().add(
-            Actions.CL_MINT_POSITION, abi.encode(config, liquidity, amount0Max, amount1Max, recipient, new bytes(0))
-        );
-        bytes memory data = planner.finalizeModifyLiquidityWithClose(key);
-        positionManager.modifyLiquidities(data, block.timestamp + 1 minutes);
+        universalRouter.execute(commands, inputs);
     }
+
 
     // Function to map a person name to the private key and derive the corresponding address
     function getAddressForPerson(string memory person) internal returns (address) {
@@ -162,6 +146,8 @@ contract DeployCatapoolt is Script {
             privateKeyStr = vm.envString("ALICE_KEY"); // Get Alice's private key
         } else if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("bob")))) {
             privateKeyStr = vm.envString("BOB_KEY"); // Get Bob's private key
+        } else if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("carol")))) {
+            privateKeyStr = vm.envString("CAROL_KEY"); // Get Bob's private key
         } else {
             revert("Person not found.");
         }

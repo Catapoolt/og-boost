@@ -15,9 +15,12 @@ import {BalanceDelta, BalanceDeltaLibrary} from "pancake-v4-core/src/types/Balan
 import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
 
 import {CLBaseHook} from "./CLBaseHook.sol";
+import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionManager.sol";
 
 import "brevis-sdk/apps/framework/BrevisApp.sol";
 import "brevis-sdk/interface/IBrevisProof.sol";
+
+import "forge-std/Script.sol";
 
 contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     using SafeERC20 for IERC20;
@@ -44,6 +47,13 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         uint256 claimedAt;
     }
 
+    struct RewardClaim{
+        uint256 campaignId;
+        address user;
+        uint256 amount;
+        uint256 claimedAt;
+    }
+
     struct Offering {
         address currency;
         uint256 amount;
@@ -65,14 +75,23 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         uint256 endsAt
     );
 
+    event OGProofSubmitted(
+        address indexed wallet, 
+        address indexed token, 
+        uint256 amount
+    );
+
     bytes32 public vkHash;
 
     mapping(address => Offering[]) internal offerings;
     mapping(address => uint256) internal offeringLengths;
-    mapping(address => mapping(PoolId => uint256)) internal ogMultipliers;
+    mapping(address => mapping(PoolId => uint256)) public ogMultipliers;
+    
 
+    CLPositionManager positionManager;
 
-    constructor(ICLPoolManager _poolManager, address _brevisRequest)  CLBaseHook(_poolManager) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
+    constructor(ICLPoolManager _poolManager, CLPositionManager _positionManager, address _brevisRequest)  CLBaseHook(_poolManager) BrevisApp(address(_brevisRequest)) Ownable(msg.sender) {
+        positionManager = _positionManager;
     }
 
     ////////////////////////////////////////
@@ -88,39 +107,28 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         bytes calldata _appCircuitOutput
     ) internal override {
         require(vkHash == _vkHash, "invalid vk");
-        (address[] memory ogAddresses, address[] memory currencies, uint256[] memory amounts) = decodeOutput(_appCircuitOutput);
+        (address wallet, address token, uint256 amount) = decodeOutput(_appCircuitOutput);
 
-        // TODO: Reset all OG multipliers
+        emit OGProofSubmitted(wallet, token, amount);
+
+        // TODO CLEAR ALL MULTIPLIERS
+        // delete ogMultipliers;
 
         // Save OG multipliers on the corresponding pools
-        for (uint256 i = 0; i < ogAddresses.length; i++) {
-            address ogAddress = ogAddresses[i];
-            address currency = currencies[i];
-            uint256 amount = amounts[i];
-            for (uint256 j = 0; j < offeringLengths[currency]; j++) {
-                Offering storage offering = offerings[currency][j];
-                if (amount >= offering.amount) {
-                    ogMultipliers[ogAddress][offering.poolId] = offering.multiplier;
-                }
+        for (uint256 i = 0; i < offeringLengths[token]; i++) {
+            Offering storage offering = offerings[token][i];
+            if (amount >= offering.amount) {
+                ogMultipliers[wallet][offering.poolId] = offering.multiplier;
             }
         }
     }
 
     function decodeOutput(
         bytes calldata output
-    ) internal pure returns (address[] memory, address[] memory, uint256[] memory) {
-        uint256 numEntries = output.length / 72;
-        address[] memory ogAddresses = new address[](numEntries);
-        address[] memory tokenAddresses = new address[](numEntries);
-        uint256[] memory amounts = new uint256[](numEntries);
-
-        for (uint256 i = 0; i < numEntries; i++) {
-            ogAddresses[i] = address(bytes20(output[i * 72: i * 72 + 20]));
-            tokenAddresses[i] = address(bytes20(output[i * 72 + 20: i * 72 + 40]));
-            amounts[i] = uint256(bytes32(output[i * 72 + 40: i * 72 + 72]));
-        }
-
-        return (ogAddresses, tokenAddresses, amounts);
+    ) internal pure returns (address wallet, address token, uint256 amount) {
+        wallet = address(bytes20(output[0: 20]));
+        token = address(bytes20(output[20: 40]));
+        amount = uint256(bytes32(output[40: 72]));
     }
 
 
@@ -135,8 +143,8 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
                 afterInitialize: false,
                 beforeAddLiquidity: false,
                 afterAddLiquidity: true,
-                beforeRemoveLiquidity: true,
-                afterRemoveLiquidity: false,
+                beforeRemoveLiquidity: false,
+                afterRemoveLiquidity: true,
                 beforeSwap: false,
                 afterSwap: false,
                 beforeDonate: false,
@@ -150,14 +158,34 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     }
 
     function afterAddLiquidity(
-        address,
-        PoolKey calldata,
-        ICLPoolManager.ModifyLiquidityParams calldata,
-        BalanceDelta,
+        address caller,
+        PoolKey calldata poolKey,
+        ICLPoolManager.ModifyLiquidityParams calldata modLiqParams,
         BalanceDelta,
         bytes calldata
-    ) external override pure returns (bytes4, BalanceDelta) {
-        revert HookNotImplemented();
+    ) external override returns (bytes4, BalanceDelta) {
+        console.log("CATAPOOLT: afterAddLiquidity");
+
+        PoolId poolId = poolKey.toId();
+
+        uint256 tokenId = uint256(modLiqParams.salt);
+        address owner = positionManager.ownerOf(tokenId);
+        console.log("POSITION Owner:", owner);
+        int24 tickLower = modLiqParams.tickLower;
+        int24 tickUpper = modLiqParams.tickUpper;
+        bytes32 salt = modLiqParams.salt;
+
+        PositionParams memory positionParams = PositionParams({
+            poolId: poolId,
+            owner: owner,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            salt: salt
+        });
+
+        userPositions[owner].push(positionParams);
+
+        return (this.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
     function beforeRemoveLiquidity(
@@ -166,7 +194,8 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         ICLPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
     ) external override pure returns (bytes4) {
-        revert HookNotImplemented();
+        console.log("CATAPOOLT: beforeRemoveLiquidity");
+        return this.beforeRemoveLiquidity.selector;
     }
 
 
@@ -218,6 +247,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         });
 
         campaigns.push(newCampaign);
+        campaignIds[_pool] = campaignId;
 
         emit CampaignCreated(
             campaignId,
@@ -310,8 +340,31 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         });
     }
 
+    mapping(address => RewardClaim[]) public rewardClaims;
+    mapping(address => uint256) public rewardClaimsCount;
+
     function claimReward(uint256 campaign) public {
-        // Implementation to claim rewards
+        Campaign memory _campaign = campaigns[campaign];
+        IERC20 rewardToken = IERC20(_campaign.rewardToken);
+        
+        Reward memory reward = listRewards(msg.sender, campaign);
+        require(reward.amount > 0, "No rewards to claim");
+        require(rewardToken.balanceOf(address(this)) >= reward.amount, "Insufficient contract balance");
+
+        rewardToken.transfer(msg.sender, reward.amount);
+        // Update campaign balance
+        campaigns[campaign].rewardAmount -= reward.amount;
+
+        // Store history of claimed rewards
+        RewardClaim memory claimed = RewardClaim({
+            campaignId: campaign,
+            user: msg.sender,
+            amount: reward.amount,
+            claimedAt: block.timestamp
+        });
+
+        rewardClaims[msg.sender].push(claimed);
+        rewardClaimsCount[msg.sender]++;
     }
 
 

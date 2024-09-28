@@ -1,5 +1,5 @@
 ## Project Overview
-Catapoolt is a tool for Incentive Providers (IPs) to ofer rewards to Liquidity Providers (LPs) based on the amount of swap fees generated on PancakeSwap v4. Also known as fee-based Liquidity Mining, Catapoolt automatically calculates the rewards allocation to LPs proportionally, based on the amount of fees earned by each LP during a reward campaign. 
+OGBoost is a tool for Incentive Providers (IPs) to ofer rewards to PancakeSwap v4 Liquidity Providers (LPs) based on the amount of swap fees generated on other AMMs (e.g. PancakeSwap v3). Also known as fee-based Liquidity Mining, OGBoost automatically calculates the rewards allocation to LPs proportionally, based on the amount of fees earned by each LP during a reward campaign. 
 
 IPs have the ability to ditribute multiplied rewards to OG LPs that have earned fees above configured thresholds on external pools or AMMs. The Incentive Provider sets up reward multipliers for pools with farming rewards. The list of the top LPs is aggregated by the off-chain Brevis based service. The ZK circuit proves that the OG list is correct.
 
@@ -64,8 +64,8 @@ POOL_MANAGER=<Pool_Manager_Address>
 BREVIS_REQUEST=<Brevis_Request_Address>
 ```
 
-### Catapoolt contract (BNB Chain Testnet)
-`0x37BFA1be7AE1C9231B831324D35Cbbb3E2329a51`
+### OGBoost contract (BNB Chain Testnet)
+`0x9248b121F2a7957414dBE436359FD02B15F26E40`
 
 ##### Dependencies
 CLPoolManager `0x969D90aC74A1a5228b66440f8C8326a8dA47A5F9`
