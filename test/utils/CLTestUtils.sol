@@ -23,6 +23,7 @@ import {ActionConstants} from "pancake-v4-periphery/src/libraries/ActionConstant
 import {LiquidityAmounts} from "pancake-v4-periphery/src/pool-cl/libraries/LiquidityAmounts.sol";
 import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
 import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import "forge-std/Script.sol";
 
 contract CLTestUtils is DeployPermit2 {
     using Planner for Plan;
@@ -36,11 +37,11 @@ contract CLTestUtils is DeployPermit2 {
 
     function deployContractsWithTokens() internal returns (Currency, Currency) {
         vault = new Vault();
-        poolManager = new CLPoolManager(vault);
+        poolManager = new CLPoolManager(vault, 500000);
         vault.registerApp(address(poolManager));
 
         permit2 = IAllowanceTransfer(deployPermit2());
-        positionManager = new CLPositionManager(vault, poolManager, permit2, 500000);
+        positionManager = new CLPositionManager(vault, poolManager, permit2);
 
         RouterParameters memory params = RouterParameters({
             permit2: address(permit2),
@@ -100,6 +101,7 @@ contract CLTestUtils is DeployPermit2 {
             Actions.CL_MINT_POSITION, abi.encode(config, liquidity, amount0Max, amount1Max, recipient, new bytes(0))
         );
         bytes memory data = planner.finalizeModifyLiquidityWithClose(key);
+        console.log("BEFORE modifyLiquidities");
         positionManager.modifyLiquidities(data, block.timestamp);
     }
 
