@@ -276,7 +276,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     
     mapping(PoolId => uint256) public campaignIds;
 
-    function listRewards(address user) public view returns (Reward[] memory) {
+    function listAllRewards(address user) public view returns (Reward[] memory) {
         PositionParams[] memory positionParams = userPositions[user];
         
         // Keep track of campaigns that have already been processed
