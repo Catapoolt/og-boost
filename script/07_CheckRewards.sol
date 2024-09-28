@@ -27,6 +27,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract Swaps is Script {
 
+    bytes32 public constant POOL_ID = 0x525be2ac239d9cb3a727d0c532cba071a4b346b552bd4ac88e8d53f76ea6a3fd;
+
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
         address wbnbAddress = vm.envAddress("WBNB");
@@ -57,9 +59,7 @@ contract Swaps is Script {
         }
 
         // Multiplier checks
-        PoolId poolId = PoolId.wrap(
-            0x48d1d3d5b41db6da10e6d68317a3bfb6257d3d015dfb607e1fec80a4d9751ecb
-        );
+        PoolId poolId = PoolId.wrap(POOL_ID);
 
         address potentialOG = 0x0da8B226E31E55B5265c11B3CE8da776f5dDAd02;
         uint256 multiplier = catapoolt.ogMultipliers(potentialOG, poolId);

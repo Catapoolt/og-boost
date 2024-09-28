@@ -12,16 +12,20 @@ contract DeployCatapoolt is Script {
         address poolManager = vm.envAddress("POOL_MANAGER");
         address positionManager = vm.envAddress("POSITION_MANAGER");
         address brevisRequest = vm.envAddress("BREVIS_REQUEST");
+        bytes32 vkHash = vm.envBytes32("VK_HASH");
+        console.log("VK_HASH:");
+        console.logBytes32(vkHash);
 
         // Start broadcasting transactions (deploying the contract)
         vm.startBroadcast();
 
         // Deploy the contract
         Catapoolt catapoolt = new Catapoolt(ICLPoolManager(poolManager), CLPositionManager(positionManager), brevisRequest);
+        catapoolt.setVkHash(vkHash);
 
         // Log the contract address for future reference
-        console.log("Deployed Catapoolt at:", address(catapoolt));
-
         vm.stopBroadcast();
+        
+        console.log("Deployed Catapoolt at:", address(catapoolt));
     }
 }
