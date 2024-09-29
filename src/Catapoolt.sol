@@ -5,6 +5,7 @@ pragma solidity ^0.8.26;
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
@@ -20,8 +21,6 @@ import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionMana
 
 import "brevis-sdk/apps/framework/BrevisApp.sol";
 import "brevis-sdk/interface/IBrevisProof.sol";
-
-// import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     using SafeERC20 for IERC20;
@@ -338,7 +337,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         for (uint256 i = 0; i < positionParams.length; i++) {
             if (campaignIds[positionParams[i].poolId] == campaignId) {
                 IERC20 rewardToken = IERC20(campaigns[campaignId].rewardToken);
-                (uint256 rewards0, uint256 rewards1) = calculateRewards(positionParams[i], rewardToken);
+                (uint256 rewards0, uint256 rewards1) = calculateRewards(positionParams[i], rewardToken, campaignId);
                 totalRewards += rewards0 + rewards1;
             }
         }
@@ -411,49 +410,10 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
 
     mapping(PoolId => mapping(IERC20 => Values)) public rewards;
 
-    function withdrawRewards(
-        PositionParams memory params,
-        IERC20 rewardToken,
-        address claimer
-    ) external returns (uint256 rewards0, uint256 rewards1) {
-        // TODO Ensure the claimer is the owner of the position
-        // require(params.owner == msg.sender, "Caller is not the owner");
-
-        // Calculate rewards
-        (rewards0, rewards1) = calculateRewards(params, rewardToken);
-
-        // Fetch the position information to get fee growth inside values
-        CLPosition.Info memory position = poolManager.getPosition(
-            params.poolId,
-            params.owner,
-            params.tickLower,
-            params.tickUpper,
-            params.salt
-        );
-
-        // Fetch the global fee growth values
-        (uint256 feeGrowthGlobal0X128, uint256 feeGrowthGlobal1X128) = poolManager.getFeeGrowthGlobals(params.poolId);
-
-        // Update the last withdrawal snapshot
-        bytes32 positionId = toPositionId(params.poolId, params.owner, params.tickLower, params.tickUpper, params.salt);
-        lastWithdrawals[positionId] = WithdrawalSnapshot({
-            feeGrowthInside0X128: position.feeGrowthInside0LastX128,
-            feeGrowthInside1X128: position.feeGrowthInside1LastX128,
-            feesGrowthGlobal0X128: feeGrowthGlobal0X128,
-            feesGrowthGlobal1X128: feeGrowthGlobal1X128,
-            timestamp: block.timestamp // Use block.timestamp instead of block.number
-        });
-
-        // Transfer the rewards to the user
-        uint256 totalRewards = rewards0 + rewards1;
-        require(rewardToken.balanceOf(address(this)) >= totalRewards, "Insufficient contract balance");
-
-        rewardToken.transfer(claimer, totalRewards);
-    }
-
     function calculateRewards(
         PositionParams memory params,
-        IERC20 rewardToken
+        IERC20 rewardToken,
+        uint256 campaignId
     ) public view returns (uint256 rewards0, uint256 rewards1) {
         // Create position ID using the struct
         bytes32 positionId = toPositionId(params.poolId, params.owner, params.tickLower, params.tickUpper, params.salt);
@@ -473,8 +433,9 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
             params.poolId, lastWithdrawal.feesGrowthGlobal0X128, lastWithdrawal.feesGrowthGlobal1X128
         );
 
-        // Calculate total rewards since the last withdrawal of the user
-        uint256 timePassed = block.timestamp - lastWithdrawal.timestamp; // Use time difference in seconds
+        // Calculate total rewards since the last withdrawal (or campaign start) of the user
+        uint256 since = Math.max(lastWithdrawal.timestamp, campaigns[campaignId].startsAt);
+        uint256 timePassed = block.timestamp - since; 
         uint256 rewardPerSecond = rewards[params.poolId][rewardToken].amountPerSecond; // Use amountPerSecond instead of amountPerBlock
         uint256 totalRewards = timePassed * rewardPerSecond;
 
@@ -484,15 +445,6 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         // Calculate the amount of rewards the user can claim
         rewards0 = (feesGlobal0 == 0) ? 0 : FullMath.mulDiv(fees0, totalRewardsPerDirection, feesGlobal0);
         rewards1 = (feesGlobal1 == 0) ? 0 : FullMath.mulDiv(fees1, totalRewardsPerDirection, feesGlobal1);
-    }
-
-    function getRewards(
-        PoolId pool,
-        IERC20 rewardToken
-    ) external view returns (uint256, uint256) {
-        // PoolId poolId,
-        // IERC20 rewardToken
-
     }
 
     function toPositionId(PoolId poolId, address owner, int24 tickLower, int24 tickUpper, bytes32 salt) internal pure returns (bytes32) {
