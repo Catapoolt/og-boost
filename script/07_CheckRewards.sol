@@ -39,8 +39,6 @@ contract CheckRewards is Script {
 
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
-        address wbnbAddress = vm.envAddress("WBNB");
-        address cake3Address = vm.envAddress("CAKE3");
         address alice = Utils.getAddressForPerson(vm, "alice");
         uint256 alicePKey = Utils.getPkeyForPerson(vm, "alice");
         uint256 aliceTokenId = vm.parseUint(vm.envString("ALICE_TOKEN_ID"));
