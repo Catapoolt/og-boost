@@ -13,3 +13,19 @@ docs/
 
 # Dotenv file
 .env
+
+# dependencies
+/frontend/node_modules
+/.pnp
+.pnp.js
+.idea/
+# testing
+/coverage
+
+# production
+/build
+
+.xml
+.iml
+# misc
+.DS_Store

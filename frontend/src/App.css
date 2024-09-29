@@ -1,0 +1,111 @@
+.App {
+    text-align: center;
+}
+
+.App-logo {
+    height: 40vmin;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .App-logo {
+        animation: App-logo-spin infinite 20s linear;
+    }
+}
+
+.App-header {
+    background-color: #282c34;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(10px + 2vmin);
+    color: white;
+}
+
+.App-link {
+    color: #61dafb;
+}
+
+.gradient-separator {
+    border: 0; /* Remove default hr border */
+    height: 1px; /* Set the height of the separator */
+    background: linear-gradient(90deg, #ffedd5, #ff6b6b, #9d4edd); /* Gradient colors */
+    margin: 15px 0; /* Add some vertical spacing */
+}
+
+.text-gradient {
+    background: linear-gradient(90deg, #ffedd5, #ff6b6b, #9d4edd); /* Gradient background */
+    -webkit-background-clip: text; /* Clip the background to the text */
+    -webkit-text-fill-color: transparent; /* Make the text color transparent to show the gradient */
+    background-clip: text; /* Clip the background to the text for non-webkit browsers */
+    text-fill-color: transparent; /* Transparent text color for non-webkit browsers */
+}
+
+.bg-gradient-secondary {
+    background: linear-gradient(90deg, #ffedd5, #ff6b6b, #9d4edd) !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(90deg, #1C202B, #6A5ACD) !important;
+
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, #1C202B, #6A5ACD) !important;
+    border: 1px solid #141620 !important;
+    color: #ffedd5 !important;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    cursor: pointer;
+    background: linear-gradient(90deg, #ffedd5, #ff6b6b, #9d4edd) !important;
+    border: 1px solid #141620 !important;
+    color: #202433 !important;
+}
+
+@keyframes App-logo-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.bg-main {
+    background: #141620 !important;
+}
+
+.bg-secondary {
+    background: #333952 !important;
+}
+
+.bg-gradient {
+    background: linear-gradient(90deg, #1C202B, #6A5ACD) !important;
+}
+
+.color-primary {
+    color: #6A5ACD !important;
+}
+
+.color-secondary {
+    color: #a7a29f !important;
+}
+
+
+.listCampaigns {
+    border: 2px solid;
+    border-radius: 10px !important;
+    border-image-slice: 1;
+    border-image-source: linear-gradient(90deg, #ffedd5, #ff6b6b, #9d4edd);
+}
+
+.listCampaignsTable {
+    border: 2px solid #6A5ACD;
+    border-radius: 10px !important;
+}
+
+

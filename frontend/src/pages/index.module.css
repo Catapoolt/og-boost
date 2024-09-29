@@ -1,0 +1,20 @@
+.totalRewards {
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.totalRewards:focus {
+    border: none; /* Remove border on focus */
+    outline: none;
+}
+
+.totalRewards:hover {
+    border: none; /* Remove border on focus */
+    outline: none;
+}
+
+.selectToken {
+    padding: 4px; /* Space for the gradient border */
+    border-radius: 5px; /* Ensures the box is rounded */
+    border: 1px solid rgb(130, 143, 193); /* Add a border */
+}

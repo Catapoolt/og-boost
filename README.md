@@ -54,6 +54,22 @@ uint256[] amounts
 ```
 All three arrays have the same length.
 
+### Frontend
+In order to run the frontend, you have to go to the `frontend` directory and run the following commands:
+
+### `nvm use v20` 
+
+In the project directory, you can run:
+
+### `npm install`
+
+Installs all the dependencies needed for the project.
+
+### `npm start`
+
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+
 
 ## Deployment
 

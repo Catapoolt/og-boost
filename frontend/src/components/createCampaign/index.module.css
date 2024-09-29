@@ -1,0 +1,13 @@
+
+.borderGradient {
+    border: 1px solid rgb(130, 143, 193);
+}
+
+
+.ogText {
+    background: linear-gradient(90deg, #ffedd5, #ff6b6b, #9d4edd); /* Gradient background */
+    -webkit-background-clip: text; /* Clip the background to the text */
+    -webkit-text-fill-color: transparent; /* Make the text color transparent to show the gradient */
+    background-clip: text; /* Clip the background to the text for non-webkit browsers */
+    text-fill-color: transparent; /* Transparent text color for non-webkit browsers */
+}
