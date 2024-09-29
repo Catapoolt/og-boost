@@ -39,12 +39,14 @@ contract CheckRewards is Script {
 
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
+        uint256 campaignId = vm.parseUint(vm.envString("CAMPAIGN_ID"));
         address alice = Utils.getAddressForPerson(vm, "alice");
         uint256 alicePKey = Utils.getPkeyForPerson(vm, "alice");
         uint256 aliceTokenId = vm.parseUint(vm.envString("ALICE_TOKEN_ID"));
         address bob = Utils.getAddressForPerson(vm, "bob");
         uint256 bobPKey = Utils.getPkeyForPerson(vm, "bob");
         uint256 bobTokenId = vm.parseUint(vm.envString("BOB_TOKEN_ID"));
+
 
         poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
         console.log("Loaded Pool Manager at:", address(poolManager));
@@ -58,16 +60,14 @@ contract CheckRewards is Script {
         string memory poolStr = Strings.toHexString(uint256(uint256(PoolId.unwrap(poolId))), 32);
 
         console.log("Campaigns BELOW: ");
-        Catapoolt.Campaign[] memory campaigns = catapoolt.getCampaigns();
-        for (uint i = 0; i < campaigns.length; i++) {
-            console.log("ID:     ", campaigns[i].id);
-            console.log("Pool:   ", poolStr);
-            console.log("Reward: ", campaigns[i].rewardAmount);
-            console.log("Token:  ", campaigns[i].rewardToken);
-            console.log("Starts: ", campaigns[i].startsAt);
-            console.log("Ends:   ", campaigns[i].endsAt);
-            console.log("\n");
-        }
+        Catapoolt.Campaign memory campaign = catapoolt.getCampaign(campaignId);
+        console.log("ID:     ", campaign.id);
+        console.log("Pool:   ", poolStr);
+        console.log("Reward: ", campaign.rewardAmount);
+        console.log("Token:  ", campaign.rewardToken);
+        console.log("Starts: ", campaign.startsAt);
+        console.log("Ends:   ", campaign.endsAt);
+        console.log("\n");
 
         // Multiplier checks
         uint256 aliceMultiplier = catapoolt.ogMultipliers(alice, poolId);
@@ -81,10 +81,8 @@ contract CheckRewards is Script {
         vm.stopBroadcast();
 
         console.log("Alice's rewards BELOW: ");
-        Catapoolt.Reward[] memory aliceRew = catapoolt.listAllRewards(alice);
-        for (uint i = 0; i < aliceRew.length; i++) {
-            console.log("Reward: ", aliceRew[i].amount);
-        }
+        Catapoolt.Reward memory aliceRew = catapoolt.listRewards(alice, campaignId);
+        console.log("Reward: ", aliceRew.amount);
 
         // Poke Bob earned fees
         vm.startBroadcast(bobPKey);
@@ -92,10 +90,18 @@ contract CheckRewards is Script {
         vm.stopBroadcast();
 
         console.log("Bob's rewards BELOW: ");
-        Catapoolt.Reward[] memory bobRew = catapoolt.listAllRewards(bob);
-        for (uint i = 0; i < bobRew.length; i++) {
-            console.log("Reward: ", bobRew[i].amount);
-        }
+        Catapoolt.Reward memory bobRew = catapoolt.listRewards(bob, campaignId);
+        console.log("Reward: ", bobRew.amount);
+
+        // Claim Alice's rewards
+        vm.startBroadcast(alicePKey);
+        catapoolt.claimReward(campaignId);
+        vm.stopBroadcast();
+
+        // Claim Bob's rewards
+        vm.startBroadcast(bobPKey);
+        catapoolt.claimReward(campaignId);
+        vm.stopBroadcast();
     }
 
     function increaseLiquidity(

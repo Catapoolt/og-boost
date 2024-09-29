@@ -64,7 +64,7 @@ contract Rewards is Test, CLTestUtils {
         vm.roll(10);
 
         // CREATE CAMPAIGN
-        uint256 rewardAmount = 1 ether;
+        uint256 rewardAmount = 10 ether;
         address rewardToken = Currency.unwrap(currency1);
         uint256 startsAt = block.timestamp;
         uint256 endsAt = block.timestamp + 1 days;
