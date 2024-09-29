@@ -94,14 +94,16 @@ contract CheckRewards is Script {
         console.log("Reward: ", bobRew.amount);
 
         // Claim Alice's rewards
-        vm.startBroadcast(alicePKey);
-        catapoolt.claimReward(campaignId);
-        vm.stopBroadcast();
+        // console.log("Claiming rewards for Alice");
+        // vm.startBroadcast(alicePKey);
+        // catapoolt.claimReward(campaignId);
+        // vm.stopBroadcast();
 
         // Claim Bob's rewards
-        vm.startBroadcast(bobPKey);
-        catapoolt.claimReward(campaignId);
-        vm.stopBroadcast();
+        // console.log("Claiming rewards for Bob");
+        // vm.startBroadcast(bobPKey);
+        // catapoolt.claimReward(campaignId);
+        // vm.stopBroadcast();
     }
 
     function increaseLiquidity(

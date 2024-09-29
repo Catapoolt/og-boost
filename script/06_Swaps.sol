@@ -86,6 +86,7 @@ contract Swaps is Script {
                 hookData: new bytes(0)
             })
         );
+        console.log("Swapped 0.001 WBNB for CAKE3");
 
         vm.stopBroadcast();    
     }
