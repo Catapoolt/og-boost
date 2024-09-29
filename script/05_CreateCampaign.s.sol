@@ -11,10 +11,10 @@ import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 
+import {Utils} from "./Utils.s.sol";
+
 contract DeployCatapoolt is Script {
     using CLPoolParametersHelper for bytes32;
-
-    bytes32 public constant POOL_ID = 0x62c82eb6e1ac399fbc6a3c7dd90db3b0ad9cb8b4939f7679d085fb4b3c1a8f24;
 
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
@@ -27,8 +27,8 @@ contract DeployCatapoolt is Script {
         MockERC20 cake3 = MockERC20(cake3Address);
 
         // PARAMETERS
-        PoolId poolId = PoolId.wrap(POOL_ID);
-        uint256 rewardAmount = 1 ether;
+        (, PoolId poolId) = Utils.getThePool(vm);
+        uint256 rewardAmount = 10 ether;
         address rewardToken = cake3Address;
         uint256 startsAt = block.timestamp;
         uint256 endsAt = block.timestamp + 1 days;
@@ -37,7 +37,6 @@ contract DeployCatapoolt is Script {
         uint256 multiplierPercent = 255;
 
         vm.startBroadcast();
-        // Approve cake3 to Catapoolt
         cake3.approve(catapooltAddress, type(uint256).max);
 
         uint256 campaignId = catapoolt.createCampaign(
@@ -50,9 +49,8 @@ contract DeployCatapoolt is Script {
             feeToken,
             multiplierPercent
         );
+        vm.stopBroadcast();
 
         console.log("Created campaign with ID:", campaignId);
-
-        vm.stopBroadcast();
     }
 }

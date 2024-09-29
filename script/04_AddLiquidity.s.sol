@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-
-
 import "forge-std/Script.sol";
-import "../src/Catapoolt.sol"; // Path to the contract
-// import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import "../src/Catapoolt.sol";
 import {MockERC20} from "pancake-v4-core/test/helpers/TokenFixture.sol";
 import {Currency, CurrencyLibrary} from "pancake-v4-core/src/types/Currency.sol";
 import {Constants} from "pancake-v4-core/test/pool-cl/helpers/Constants.sol";
@@ -13,7 +10,6 @@ import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 import {PoolId} from "pancake-v4-core/src/types/PoolId.sol";
-import {Vault} from "pancake-v4-core/src/Vault.sol";
 import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
 import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionManager.sol";
 import {UniversalRouter, RouterParameters} from "pancake-v4-universal-router/src/UniversalRouter.sol";
@@ -26,13 +22,14 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
+import {Utils} from "./Utils.s.sol";
+
 contract DeployCatapoolt is Script {
 
     using CLPoolParametersHelper for bytes32;
     using Planner for Plan;
     using PoolIdLibrary for PoolKey;
 
-    Vault vault;
     CLPoolManager poolManager;
     CLPositionManager positionManager;
     UniversalRouter universalRouter;
@@ -40,8 +37,6 @@ contract DeployCatapoolt is Script {
     IAllowanceTransfer permit2;
 
     function run() external {
-        vault = Vault(vm.envAddress("VAULT"));
-        console.log("Loaded Vault at:", address(vault));
         poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
         console.log("Loaded Pool Manager at:", address(poolManager));
         positionManager = CLPositionManager(vm.envAddress("POSITION_MANAGER"));
@@ -50,14 +45,13 @@ contract DeployCatapoolt is Script {
         console.log("Loaded Universal Router at:", address(universalRouter));
         permit2 = IAllowanceTransfer(vm.envAddress("PERMIT2"));
 
-        address catapooltAddress = vm.envAddress("CATAPOOLT");
         address wbnbAddress = vm.envAddress("WBNB");
         address cake3Address = vm.envAddress("CAKE3");
 
         string memory person = vm.envString("PERSON");
         console.log("Person:", person);
-        uint256 personPKey = getPkeyForPerson(person);
-        address personAddress = getAddressForPerson(person);
+        uint256 personPKey = Utils.getPkeyForPerson(vm, person);
+        address personAddress = Utils.getAddressForPerson(vm, person);
         console.log("Address for", person, "is:", personAddress);
 
         MockERC20 wbnb = MockERC20(wbnbAddress);
@@ -65,25 +59,8 @@ contract DeployCatapoolt is Script {
         MockERC20 cake3 = MockERC20(cake3Address);
         console.log("Loaded CAKE3 at:", address(cake3));
 
-        Catapoolt catapoolt = Catapoolt(catapooltAddress);
-        console.log("Loaded Catapoolt at:", address(catapoolt));
+        (PoolKey memory key, ) = Utils.getThePool(vm);
 
-        (Currency currency0, Currency currency1) = SortTokens.sort(wbnb, cake3);
-
-        // create the pool key
-        PoolKey memory key = PoolKey({
-            currency0: currency0,
-            currency1: currency1,
-            hooks: catapoolt,
-            poolManager: poolManager,
-            fee: uint24(3000), // 0.3% fee
-            // tickSpacing: 10
-            parameters: bytes32(uint256(catapoolt.getHooksRegistrationBitmap())).setTickSpacing(10)
-        });
-
-        PoolId id = key.toId();
-        string memory hashStr = Strings.toHexString(uint256(uint256(PoolId.unwrap(id))), 32);
-        console.log("Pool ID:", hashStr);
         uint128 amount0Max = 0.001 ether;
         uint128 amount1Max = 0.001 ether;
         int24 tickLower = -120;
@@ -94,18 +71,10 @@ contract DeployCatapoolt is Script {
         
         // Approvals
         cake3.approve(address(positionManager), type(uint256).max);
-        // query and log approval amount
-        uint256 cake3Allowance = cake3.allowance(personAddress, address(positionManager));
         wbnb.approve(address(positionManager), type(uint256).max);
-        // query and log approval amount
-        uint256 wbnbAllowance = wbnb.allowance(personAddress, address(positionManager));
 
         cake3.approve(address(permit2), type(uint256).max);
-        // query and log approval amount
-        uint256 cake3Allowance2 = cake3.allowance(personAddress, address(permit2));
         wbnb.approve(address(permit2), type(uint256).max);
-        // query and log approval amount
-        uint256 wbnbAllowance2 = wbnb.allowance(personAddress, address(permit2));
 
         permit2.approve(address(cake3), address(positionManager), type(uint160).max, type(uint48).max);
         permit2.approve(address(wbnb), address(positionManager), type(uint160).max, type(uint48).max);
@@ -115,7 +84,7 @@ contract DeployCatapoolt is Script {
 
         // Add liquidity
         uint256 tokenId = addLiquidity(key, amount0Max, amount1Max, tickLower, tickUpper, recipient);
-
+        console.log("Liquidity added. Token ID:", tokenId);
         vm.stopBroadcast();    
     }
 
@@ -145,38 +114,5 @@ contract DeployCatapoolt is Script {
         );
         bytes memory data = planner.finalizeModifyLiquidityWithClose(key);
         positionManager.modifyLiquidities(data, block.timestamp + 1 minutes);
-    }
-
-    // Function to map a person name to the private key and derive the corresponding address
-    function getAddressForPerson(string memory person) internal returns (address) {
-        uint256 privateKey = getPkeyForPerson(person);
-
-        // Derive the address from the private key
-        return deriveAddress(privateKey);
-    }
-
-    function getPkeyForPerson(string memory person) internal returns (uint256) {
-        string memory privateKeyStr;
-
-        if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("alice")))) {
-            privateKeyStr = vm.envString("ALICE_KEY"); // Get Alice's private key
-        } else if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("bob")))) {
-            privateKeyStr = vm.envString("BOB_KEY"); // Get Bob's private key
-        } else {
-            revert("Person not found.");
-        }
-
-        // Ensure the private key has the '0x' prefix, prepend if missing
-        if (bytes(privateKeyStr).length >= 2 && bytes(privateKeyStr)[0] == '0' && bytes(privateKeyStr)[1] == 'x') {
-            // If it already has the '0x' prefix
-            return vm.parseUint(privateKeyStr); 
-        } else {
-            // If it's missing the '0x' prefix, add it
-            return vm.parseUint(string(abi.encodePacked("0x", privateKeyStr)));
-        }
-    }
-
-    function deriveAddress(uint256 privateKey) internal pure returns (address) {
-        return vm.addr(privateKey);
     }
 }

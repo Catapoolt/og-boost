@@ -131,6 +131,32 @@ contract CLTestUtils is DeployPermit2 {
         positionManager.modifyLiquidities(data, block.timestamp);
     }
 
+    function increaseLiquidity(
+        uint256 tokenId,
+        PoolKey memory key,
+        uint128 amount0,
+        uint128 amount1,
+        int24 tickLower,
+        int24 tickUpper
+    ) internal {
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
+        uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            amount0,
+            amount1
+        );
+        PositionConfig memory config = PositionConfig({poolKey: key, tickLower: tickLower, tickUpper: tickUpper});
+
+        // amount0Min and amount1Min is 0 as some hook takes a fee from here
+        Plan memory planner = Planner.init().add(
+            Actions.CL_INCREASE_LIQUIDITY, abi.encode(tokenId, config, liquidity, 0, 0, new bytes(0))
+        );
+        bytes memory data = planner.finalizeModifyLiquidityWithClose(key);
+        positionManager.modifyLiquidities(data, block.timestamp);
+    }
+
     function exactInputSingle(ICLRouterBase.CLSwapExactInputSingleParams memory params) internal {
         Plan memory plan = Planner.init().add(Actions.CL_SWAP_EXACT_IN_SINGLE, abi.encode(params));
         bytes memory data = params.zeroForOne

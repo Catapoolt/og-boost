@@ -11,7 +11,6 @@ import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 import {PoolId} from "pancake-v4-core/src/types/PoolId.sol";
-import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
 import {UniversalRouter, RouterParameters} from "pancake-v4-universal-router/src/UniversalRouter.sol";
 import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
 import {LiquidityAmounts} from "pancake-v4-periphery/src/pool-cl/libraries/LiquidityAmounts.sol";
@@ -25,6 +24,8 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
+import {Utils} from "./Utils.s.sol";
+
 contract Swaps is Script {
 
     using CLPoolParametersHelper for bytes32;
@@ -32,25 +33,21 @@ contract Swaps is Script {
     using PoolIdLibrary for PoolKey;
 
     UniversalRouter universalRouter;
-    CLPoolManager poolManager;
 
     IAllowanceTransfer permit2;
 
     function run() external {
         universalRouter = UniversalRouter(payable(vm.envAddress("UNIVERSAL_ROUTER")));
         console.log("Loaded Universal Router at:", address(universalRouter));
-        poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
-        console.log("Loaded Pool Manager at:", address(poolManager));
         permit2 = IAllowanceTransfer(vm.envAddress("PERMIT2"));
 
-        address catapooltAddress = vm.envAddress("CATAPOOLT");
         address wbnbAddress = vm.envAddress("WBNB");
         address cake3Address = vm.envAddress("CAKE3");
 
         string memory person = vm.envString("PERSON");
         console.log("Person:", person);
-        uint256 personPKey = getPkeyForPerson(person);
-        address personAddress = getAddressForPerson(person);
+        uint256 personPKey = Utils.getPkeyForPerson(vm, person);
+        address personAddress = Utils.getAddressForPerson(vm, person);
         console.log("Address for", person, "is:", personAddress);
 
         MockERC20 wbnb = MockERC20(wbnbAddress);
@@ -58,45 +55,22 @@ contract Swaps is Script {
         MockERC20 cake3 = MockERC20(cake3Address);
         console.log("Loaded CAKE3 at:", address(cake3));
 
-        Catapoolt catapoolt = Catapoolt(catapooltAddress);
-        console.log("Loaded Catapoolt at:", address(catapoolt));
-
         (Currency currency0, Currency currency1) = SortTokens.sort(wbnb, cake3);
 
-        // create the pool key
-        PoolKey memory key = PoolKey({
-            currency0: currency0,
-            currency1: currency1,
-            hooks: catapoolt,
-            poolManager: poolManager,
-            fee: uint24(3000), // 0.3% fee
-            // tickSpacing: 10
-            parameters: bytes32(uint256(catapoolt.getHooksRegistrationBitmap())).setTickSpacing(10)
-        });
-
-        PoolId id = key.toId();
-        string memory hashStr = Strings.toHexString(uint256(uint256(PoolId.unwrap(id))), 32);
-        console.log("Pool ID:", hashStr);
+        (PoolKey memory key, ) = Utils.getThePool(vm);
 
         vm.startBroadcast(personPKey);
 
         // Approvals
         cake3.approve(address(permit2), type(uint256).max);
-        // query and log approval amount
-        uint256 cake3Allowance2 = cake3.allowance(personAddress, address(permit2));
         wbnb.approve(address(permit2), type(uint256).max);
-        // query and log approval amount
-        uint256 wbnbAllowance2 = wbnb.allowance(personAddress, address(permit2));
-
 
         (uint160 allowance0, ,) = permit2.allowance(personAddress, Currency.unwrap(currency0), address(universalRouter));
-        console.log("Allowance for currency0:", allowance0);
         if(allowance0 == 0) {
             permit2.approve(Currency.unwrap(currency0), address(universalRouter), type(uint160).max, type(uint48).max);
         }
 
         (uint160 allowance1, ,) = permit2.allowance(personAddress, Currency.unwrap(currency1), address(universalRouter));
-        console.log("Allowance for currency1:", allowance1);
         if(allowance1 == 0) {
             permit2.approve(Currency.unwrap(currency1), address(universalRouter), type(uint160).max, type(uint48).max);
         }
@@ -113,7 +87,6 @@ contract Swaps is Script {
             })
         );
 
-
         vm.stopBroadcast();    
     }
 
@@ -128,41 +101,5 @@ contract Swaps is Script {
         inputs[0] = data;
 
         universalRouter.execute(commands, inputs);
-    }
-
-
-    // Function to map a person name to the private key and derive the corresponding address
-    function getAddressForPerson(string memory person) internal returns (address) {
-        uint256 privateKey = getPkeyForPerson(person);
-
-        // Derive the address from the private key
-        return deriveAddress(privateKey);
-    }
-
-    function getPkeyForPerson(string memory person) internal returns (uint256) {
-        string memory privateKeyStr;
-
-        if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("alice")))) {
-            privateKeyStr = vm.envString("ALICE_KEY"); // Get Alice's private key
-        } else if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("bob")))) {
-            privateKeyStr = vm.envString("BOB_KEY"); // Get Bob's private key
-        } else if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("carol")))) {
-            privateKeyStr = vm.envString("CAROL_KEY"); // Get Bob's private key
-        } else {
-            revert("Person not found.");
-        }
-
-        // Ensure the private key has the '0x' prefix, prepend if missing
-        if (bytes(privateKeyStr).length >= 2 && bytes(privateKeyStr)[0] == '0' && bytes(privateKeyStr)[1] == 'x') {
-            // If it already has the '0x' prefix
-            return vm.parseUint(privateKeyStr); 
-        } else {
-            // If it's missing the '0x' prefix, add it
-            return vm.parseUint(string(abi.encodePacked("0x", privateKeyStr)));
-        }
-    }
-
-    function deriveAddress(uint256 privateKey) internal pure returns (address) {
-        return vm.addr(privateKey);
     }
 }

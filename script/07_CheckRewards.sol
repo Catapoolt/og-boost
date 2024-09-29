@@ -25,32 +25,45 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-contract Swaps is Script {
+import {Utils} from "./Utils.s.sol";
 
-    bytes32 public constant POOL_ID = 0x62c82eb6e1ac399fbc6a3c7dd90db3b0ad9cb8b4939f7679d085fb4b3c1a8f24;
+contract CheckRewards is Script {
+
+    using CLPoolParametersHelper for bytes32;
+    using Planner for Plan;
+    using PoolIdLibrary for PoolKey;
+
+    CLPoolManager poolManager;
+
+    CLPositionManager positionManager;
 
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
         address wbnbAddress = vm.envAddress("WBNB");
         address cake3Address = vm.envAddress("CAKE3");
-        address alice = 0xb83A3061D0D34073ACcbDA25b32c4c62caff4529;
-        address bob = 0x0da8B226E31E55B5265c11B3CE8da776f5dDAd02;
+        address alice = Utils.getAddressForPerson(vm, "alice");
+        uint256 alicePKey = Utils.getPkeyForPerson(vm, "alice");
+        uint256 aliceTokenId = vm.parseUint(vm.envString("ALICE_TOKEN_ID"));
+        address bob = Utils.getAddressForPerson(vm, "bob");
+        uint256 bobPKey = Utils.getPkeyForPerson(vm, "bob");
+        uint256 bobTokenId = vm.parseUint(vm.envString("BOB_TOKEN_ID"));
 
-        MockERC20 wbnb = MockERC20(wbnbAddress);
-        console.log("Loaded WBNB at:", address(wbnb));
-        MockERC20 cake3 = MockERC20(cake3Address);
-        console.log("Loaded CAKE3 at:", address(cake3));
+        poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
+        console.log("Loaded Pool Manager at:", address(poolManager));
+        positionManager = CLPositionManager(vm.envAddress("POSITION_MANAGER"));
+        console.log("Loaded Position Manager at:", address(positionManager));
 
         Catapoolt catapoolt = Catapoolt(catapooltAddress);
         console.log("Loaded Catapoolt at:", address(catapoolt));
 
+        (PoolKey memory key, PoolId poolId) = Utils.getThePool(vm);
+        string memory poolStr = Strings.toHexString(uint256(uint256(PoolId.unwrap(poolId))), 32);
 
         console.log("Campaigns BELOW: ");
         Catapoolt.Campaign[] memory campaigns = catapoolt.getCampaigns();
         for (uint i = 0; i < campaigns.length; i++) {
             console.log("ID:     ", campaigns[i].id);
-            string memory hashStr = Strings.toHexString(uint256(uint256(PoolId.unwrap(campaigns[i].pool))), 32);
-            console.log("Pool:   ", hashStr);
+            console.log("Pool:   ", poolStr);
             console.log("Reward: ", campaigns[i].rewardAmount);
             console.log("Token:  ", campaigns[i].rewardToken);
             console.log("Starts: ", campaigns[i].startsAt);
@@ -59,11 +72,15 @@ contract Swaps is Script {
         }
 
         // Multiplier checks
-        PoolId poolId = PoolId.wrap(POOL_ID);
+        uint256 aliceMultiplier = catapoolt.ogMultipliers(alice, poolId);
+        console.log("Multiplier for Alice: ", aliceMultiplier);
+        uint256 bobMultiplier = catapoolt.ogMultipliers(bob, poolId);
+        console.log("Multiplier for Bob: ", bobMultiplier);
 
-        address potentialOG = 0x0da8B226E31E55B5265c11B3CE8da776f5dDAd02;
-        uint256 multiplier = catapoolt.ogMultipliers(potentialOG, poolId);
-        console.log("Multiplier for potential OG: ", multiplier);
+        // Poke Alice earned fees
+        vm.startBroadcast(alicePKey);
+        increaseLiquidity(aliceTokenId, key, 0 ether, 0 ether, -120, 120);
+        vm.stopBroadcast();
 
         console.log("Alice's rewards BELOW: ");
         Catapoolt.Reward[] memory aliceRew = catapoolt.listAllRewards(alice);
@@ -71,10 +88,41 @@ contract Swaps is Script {
             console.log("Reward: ", aliceRew[i].amount);
         }
 
+        // Poke Bob earned fees
+        vm.startBroadcast(bobPKey);
+        increaseLiquidity(bobTokenId, key, 0 ether, 0 ether, -120, 120);
+        vm.stopBroadcast();
+
         console.log("Bob's rewards BELOW: ");
         Catapoolt.Reward[] memory bobRew = catapoolt.listAllRewards(bob);
         for (uint i = 0; i < bobRew.length; i++) {
             console.log("Reward: ", bobRew[i].amount);
         }
+    }
+
+    function increaseLiquidity(
+        uint256 tokenId,
+        PoolKey memory key,
+        uint128 amount0,
+        uint128 amount1,
+        int24 tickLower,
+        int24 tickUpper
+    ) internal {
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
+        uint256 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            amount0,
+            amount1
+        );
+        PositionConfig memory config = PositionConfig({poolKey: key, tickLower: tickLower, tickUpper: tickUpper});
+
+        // amount0Min and amount1Min is 0 as some hook takes a fee from here
+        Plan memory planner = Planner.init().add(
+            Actions.CL_INCREASE_LIQUIDITY, abi.encode(tokenId, config, liquidity, 0, 0, new bytes(0))
+        );
+        bytes memory data = planner.finalizeModifyLiquidityWithClose(key);
+        positionManager.modifyLiquidities(data, block.timestamp + 1 hours);
     }
 }

@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
 import {CLPosition} from "pancake-v4-core/src/pool-cl/libraries/CLPosition.sol";
 import {BalanceDelta, BalanceDeltaLibrary} from "pancake-v4-core/src/types/BalanceDelta.sol";
 
@@ -20,7 +21,7 @@ import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionMana
 import "brevis-sdk/apps/framework/BrevisApp.sol";
 import "brevis-sdk/interface/IBrevisProof.sol";
 
-import "forge-std/Script.sol";
+// import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     using SafeERC20 for IERC20;
@@ -158,19 +159,16 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     }
 
     function afterAddLiquidity(
-        address caller,
+        address,
         PoolKey calldata poolKey,
         ICLPoolManager.ModifyLiquidityParams calldata modLiqParams,
         BalanceDelta,
         bytes calldata
     ) external override returns (bytes4, BalanceDelta) {
-        console.log("CATAPOOLT: afterAddLiquidity");
-
         PoolId poolId = poolKey.toId();
 
         uint256 tokenId = uint256(modLiqParams.salt);
         address owner = positionManager.ownerOf(tokenId);
-        console.log("POSITION Owner:", owner);
         int24 tickLower = modLiqParams.tickLower;
         int24 tickUpper = modLiqParams.tickUpper;
         bytes32 salt = modLiqParams.salt;
@@ -194,10 +192,18 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         ICLPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
     ) external override pure returns (bytes4) {
-        console.log("CATAPOOLT: beforeRemoveLiquidity");
         return this.beforeRemoveLiquidity.selector;
     }
 
+    function afterRemoveLiquidity(
+        address,
+        PoolKey calldata,
+        ICLPoolManager.ModifyLiquidityParams calldata,
+        BalanceDelta delta,
+        bytes calldata
+    ) external override pure returns (bytes4, BalanceDelta) {
+        return (this.afterRemoveLiquidity.selector, delta);
+    }
 
 
     ////////////////////////////////////////
@@ -244,6 +250,14 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
             earnedFeesAmount: earnedFeesAmount,
             feeToken: feeToken,
             multiplier: multiplierPercent
+        });
+
+        // calculate rewards per second
+        uint256 durationInSeconds = _endsAt - _startsAt;
+        uint256 amountPerSecond = _rewardAmount / durationInSeconds;
+        rewards[_pool][rewardToken] = Values({
+            amountPerSecond: amountPerSecond,
+            durationInSeconds: durationInSeconds
         });
 
         campaigns.push(newCampaign);
@@ -449,8 +463,9 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
 
         // Calculate fees accrued by the user since the last reward withdrawal
         (uint256 fees0, uint256 fees1) = getFeesAccrued(
-            params.poolId, params.owner, params.tickLower, params.tickUpper, params.salt,
-            lastWithdrawal.feeGrowthInside0X128, lastWithdrawal.feeGrowthInside1X128
+            params.salt,
+            lastWithdrawal.feeGrowthInside0X128, 
+            lastWithdrawal.feeGrowthInside1X128
         );
 
         // Calculate fees accrued by all the users since the last reward withdrawal
@@ -485,19 +500,17 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     }
 
     function getFeesAccrued(
-        PoolId poolId,
-        address owner,
-        int24 tickLower, 
-        int24 tickUpper,
         bytes32 salt,
         uint256 feeGrowthInside0X128LastWithdrawal,
         uint256 feeGrowthInside1X128LastWithdrawal
     ) public view returns (uint256 fees0, uint256 fees1) {
-        CLPosition.Info memory position = poolManager.getPosition(poolId, owner, tickLower, tickUpper, salt);
+
+        (, , , , uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128
+        ) = positionManager.positions(uint256(salt));
 
         unchecked {
-            fees0 = position.feeGrowthInside0LastX128 - feeGrowthInside0X128LastWithdrawal;
-            fees1 = position.feeGrowthInside1LastX128 - feeGrowthInside1X128LastWithdrawal;
+            fees0 = feeGrowthInside0LastX128 - feeGrowthInside0X128LastWithdrawal;
+            fees1 = feeGrowthInside1LastX128 - feeGrowthInside1X128LastWithdrawal;
         }
     }
 
@@ -513,5 +526,4 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
             feesGlobal1 = feeGrowthGlobal1X128 - feesGrowthGlobal1X128LastWithdrawal;
         }
     }
-
 }
