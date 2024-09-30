@@ -83,8 +83,8 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
 
     bytes32 public vkHash;
 
-    mapping(address => Offering[]) internal offerings;
-    mapping(address => uint256) internal offeringLengths;
+    mapping(address => Offering[]) public offerings;
+    mapping(address => uint256) public offeringLengths;
     mapping(address => mapping(PoolId => uint256)) public ogMultipliers;
     
 
@@ -107,16 +107,23 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         bytes calldata _appCircuitOutput
     ) internal override {
         require(vkHash == _vkHash, "invalid vk");
-        (address wallet, address token, uint256 amount) = decodeOutput(_appCircuitOutput);
+        _handleProofResult(_appCircuitOutput);
+    }
 
-        emit OGProofSubmitted(wallet, token, amount);
+    // Brevis proof bypass for testing
+    function _handleProofResult(
+        bytes calldata _appCircuitOutput
+    ) public {
+        (address wallet, address feeToken, uint256 amount) = decodeOutput(_appCircuitOutput);
+        emit OGProofSubmitted(wallet, feeToken, amount);
 
         // TODO CLEAR ALL MULTIPLIERS
         // delete ogMultipliers;
 
         // Save OG multipliers on the corresponding pools
-        for (uint256 i = 0; i < offeringLengths[token]; i++) {
-            Offering storage offering = offerings[token][i];
+        for (uint256 i = 0; i < offeringLengths[feeToken]; i++) {
+            Offering storage offering = offerings[feeToken][i];
+
             if (amount >= offering.amount) {
                 ogMultipliers[wallet][offering.poolId] = offering.multiplier;
             }
@@ -259,6 +266,16 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
             durationInSeconds: durationInSeconds
         });
 
+        if (multiplierPercent > 0) {
+            offerings[feeToken].push(Offering({
+                currency: feeToken,
+                amount: earnedFeesAmount,
+                poolId: _pool,
+                multiplier: multiplierPercent
+            }));
+            offeringLengths[feeToken]++;
+        }
+
         campaigns.push(newCampaign);
         campaignIds[_pool] = campaignId;
 
@@ -339,6 +356,13 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
                 IERC20 rewardToken = IERC20(campaigns[campaignId].rewardToken);
                 (uint256 rewards0, uint256 rewards1) = calculateRewards(positionParams[i], rewardToken, campaignId);
                 totalRewards += rewards0 + rewards1;
+                // Check multiplier for user
+                if (offeringLengths[address(campaigns[campaignId].feeToken)] > 0) {
+                    uint256 multiplier = ogMultipliers[user][positionParams[i].poolId];
+                    if (multiplier > 0) {
+                        totalRewards = totalRewards * multiplier / 100;
+                    }
+                }
             }
         }
 

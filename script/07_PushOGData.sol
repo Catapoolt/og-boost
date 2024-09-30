@@ -18,39 +18,34 @@ contract DeployCatapoolt is Script {
 
     function run() external {
         address catapooltAddress = vm.envAddress("CATAPOOLT");
-        address cake3Address = vm.envAddress("CAKE3");
+        address alice = Utils.getAddressForPerson(vm, "alice");
         address wbnbAddress = vm.envAddress("WBNB");
 
         Catapoolt catapoolt = Catapoolt(catapooltAddress);
         console.log("Loaded Catapoolt at:", address(catapoolt));
 
-        MockERC20 cake3 = MockERC20(cake3Address);
-
-        // PARAMETERS
-        (, PoolId poolId) = Utils.getThePool(vm);
-        uint256 rewardAmount = 10 ether;
-        address rewardToken = cake3Address;
-        uint256 startsAt = block.timestamp;
-        uint256 endsAt = block.timestamp + 1 days;
-        uint256 earnedFeesAmount = 10 ether;
-        address feeToken = wbnbAddress;
-        uint256 multiplierPercent = 200;
-
         vm.startBroadcast();
-        cake3.approve(catapooltAddress, type(uint256).max);
-
-        uint256 campaignId = catapoolt.createCampaign(
-            poolId,
-            rewardAmount,
-            rewardToken,
-            startsAt,
-            endsAt,
-            earnedFeesAmount,
-            feeToken,
-            multiplierPercent
+        uint256 amount = 12 ether;
+        bytes memory appCircuitOutput = abi.encodePacked(
+            address(alice),
+            address(wbnbAddress),
+            uint256(amount)
         );
+        catapoolt._handleProofResult(appCircuitOutput);
         vm.stopBroadcast();
 
-        console.log("Created campaign with ID:", campaignId);
+        console.log("Pushed OG Data for Alice");
+    }
+
+    function encodeOutput(
+        address wallet,
+        address token,
+        uint256 amount
+    ) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            bytes20(wallet),  // First 20 bytes for the wallet address
+            bytes20(token),   // Next 20 bytes for the token address
+            bytes32(amount)   // Next 32 bytes for the uint256 amount
+        );
     }
 }
