@@ -19,7 +19,7 @@ export const getUnixTimestamp = (date: string) => {
 	return Math.floor(new Date(date).getTime() / 1000);
 }
 
-export const CONTRACT_ADDRESS = '0x1feeF9f80248dcB4614905e1cbe96d1be08B1155';
+export const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS || '';
 
 export const tokenList: Token[] = [
 	{
@@ -44,7 +44,7 @@ export const tokenList: Token[] = [
 
 export const poolOptions: PoolOption[] = [
 	{
-		poolId: '0xa8fef75dfd223a48a55e5211354ec02fa1c07d3ceade46fce38f66fb833794a0',
+		poolId: process.env.REACT_APP_POOL_ID || '',
 		poolSymbol: 'CAKE3/WBNB',
 		token1: {
 			img: "https://tokens.pancakeswap.finance/images/0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82.png",
@@ -63,7 +63,7 @@ export const poolOptions: PoolOption[] = [
 
 export const poolOptionsForRewards: PoolOption[] = [
 	{
-		poolId: '0x62c82eb6e1ac399fbc6a3c7dd90db3b0ad9cb8b4939f7679d085fb4b3c1a8f24',
+		poolId: process.env.REACT_APP_POOL_ID || '',
 		poolSymbol: 'CAKE3/WBNB',
 		token1: {
 			img: "https://tokens.pancakeswap.finance/images/0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82.png",
