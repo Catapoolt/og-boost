@@ -8,6 +8,8 @@ Idea for the future: Prevent liquidity withdrawal based on the amount of reward 
 
 ## How to run
 The contracts have been deployed to BNB Chain test net.
+You can also follow the recording for the how to run steps:
+[https://www.youtube.com/watch?v=sRhFv59z5Tc](https://www.youtube.com/watch?v=sRhFv59z5Tc)
 
 #### Prerequisites
 Set environment vars
