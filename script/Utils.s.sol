@@ -62,8 +62,6 @@ library Utils {
             privateKeyStr = vm.envString("CAROL_KEY"); // Get Bob's private key
         } else if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("deployer")))) {
             privateKeyStr = vm.envString("PRIVATE_KEY");
-        } else if (keccak256(abi.encodePacked((person))) == keccak256(abi.encodePacked(("dev1")))) {
-            privateKeyStr = vm.envString("DEV1_KEY");
         } else {
             revert("Person not found.");
         }
