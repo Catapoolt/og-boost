@@ -3,27 +3,39 @@ OGBoost is a tool for Incentive Providers (IPs) to ofer rewards to PancakeSwap v
 
 IPs have the ability to ditribute multiplied rewards to OG LPs that have earned fees above configured thresholds on external pools or AMMs. The Incentive Provider sets up reward multipliers for pools with farming rewards. The list of the top LPs is aggregated by the off-chain Brevis based service. The ZK circuit proves that the OG list is correct.
 
-
-
-
-## Future Feature
+### Future Feature
 Idea for the future: Prevent liquidity withdrawal based on the amount of reward tokens sold. If small amounts are sold, no liquidity is locked. In case large amounts of tokens are sold, the hook will gradualy release the LP position liquidity only after more fees are earned. Brevis will be used to quantify selling behaviour of the reward token and inform the hook to lock liquidity.
 
-### Frontend
+## How to run
+The contracts have been deployed to BNB Chain test net.
+
+1. Set environment vars
+
+`cp .env.template .env`
+
+You need 4 wallets with tBNB. Set the private keys in your .env
+`PRIVATE_KEY` - the pkey of the deployer and campaign creator
+`ALICE_KEY` - the pkey of the first LP
+`BOB_KEY` - the pkey of the second LP
+`CAROL_KEY` - the pkey of the swapper
+
+Run approve reward token for the campaign creator
+```
+forge script script/21_Approves.sol \                                                                        
+  --rpc-url $RPC_URL \
+  --broadcast
+```
+
+1. Frontend
 In order to run the frontend, you have to go to the `frontend` directory and run the following commands:
-
-### `nvm use v20` 
-
-In the project directory, you can run:
-
-### `npm install`
-
-Installs all the dependencies needed for the project.
-
-### `npm start`
+`nvm use v20` 
+`npm install`
+`npm start`
 
 Runs the app in the development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+
+2. 
 
 
 ## Deployment
