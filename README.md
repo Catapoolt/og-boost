@@ -20,7 +20,7 @@ BREVIS_REQUEST=<Brevis_Request_Address>
 ```
 
 ### OGBoost contract (BNB Chain Testnet)
-`0x87cb1aCd722232b00a8045abc406376E8aCb5F8F`
+`0x1feeF9f80248dcB4614905e1cbe96d1be08B1155`
 
 ##### Dependencies
 CLPoolManager `0x969D90aC74A1a5228b66440f8C8326a8dA47A5F9`

@@ -46,6 +46,9 @@ contract CheckRewards is Script {
         address bob = Utils.getAddressForPerson(vm, "bob");
         uint256 bobPKey = Utils.getPkeyForPerson(vm, "bob");
         uint256 bobTokenId = vm.parseUint(vm.envString("BOB_TOKEN_ID"));
+        address dev1 = Utils.getAddressForPerson(vm, "dev1");
+        uint256 dev1PKey = Utils.getPkeyForPerson(vm, "dev1");
+        uint256 dev1TokenId = vm.parseUint(vm.envString("DEV1_TOKEN_ID"));
 
 
         poolManager = CLPoolManager(vm.envAddress("POOL_MANAGER"));
@@ -92,6 +95,15 @@ contract CheckRewards is Script {
         console.log("Bob's rewards BELOW: ");
         Catapoolt.Reward memory bobRew = catapoolt.listRewards(bob, campaignId);
         console.log("Reward: ", bobRew.amount);
+
+        // Poke Dev1 earned fees
+        // vm.startBroadcast(dev1PKey);
+        // increaseLiquidity(dev1TokenId, key, 0 ether, 0 ether, -120, 120);
+        // vm.stopBroadcast();
+
+        // console.log("Dev1's rewards BELOW: ");
+        // Catapoolt.Reward memory dev1Rew = catapoolt.listRewards(dev1, campaignId);
+        // console.log("Reward: ", dev1Rew.amount);
 
         // Claim Alice's rewards
         // console.log("Claiming rewards for Alice");
