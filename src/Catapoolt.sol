@@ -83,8 +83,8 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
 
     bytes32 public vkHash;
 
-    mapping(address => Offering[]) internal offerings;
-    mapping(address => uint256) internal offeringLengths;
+    mapping(address => Offering[]) public offerings;
+    mapping(address => uint256) public offeringLengths;
     mapping(address => mapping(PoolId => uint256)) public ogMultipliers;
     
 
@@ -114,16 +114,16 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
     function _handleProofResult(
         bytes calldata _appCircuitOutput
     ) public {
-        (address wallet, address token, uint256 amount) = decodeOutput(_appCircuitOutput);
-
-        emit OGProofSubmitted(wallet, token, amount);
+        (address wallet, address feeToken, uint256 amount) = decodeOutput(_appCircuitOutput);
+        emit OGProofSubmitted(wallet, feeToken, amount);
 
         // TODO CLEAR ALL MULTIPLIERS
         // delete ogMultipliers;
 
         // Save OG multipliers on the corresponding pools
-        for (uint256 i = 0; i < offeringLengths[token]; i++) {
-            Offering storage offering = offerings[token][i];
+        for (uint256 i = 0; i < offeringLengths[feeToken]; i++) {
+            Offering storage offering = offerings[feeToken][i];
+
             if (amount >= offering.amount) {
                 ogMultipliers[wallet][offering.poolId] = offering.multiplier;
             }
@@ -267,13 +267,13 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
         });
 
         if (multiplierPercent > 0) {
-            offerings[_rewardToken].push(Offering({
+            offerings[feeToken].push(Offering({
                 currency: feeToken,
                 amount: earnedFeesAmount,
                 poolId: _pool,
                 multiplier: multiplierPercent
             }));
-            offeringLengths[_rewardToken]++;
+            offeringLengths[feeToken]++;
         }
 
         campaigns.push(newCampaign);
@@ -357,7 +357,7 @@ contract Catapoolt is CLBaseHook, BrevisApp, Ownable {
                 (uint256 rewards0, uint256 rewards1) = calculateRewards(positionParams[i], rewardToken, campaignId);
                 totalRewards += rewards0 + rewards1;
                 // Check multiplier for user
-                if (offeringLengths[address(rewardToken)] > 0) {
+                if (offeringLengths[address(campaigns[campaignId].feeToken)] > 0) {
                     uint256 multiplier = ogMultipliers[user][positionParams[i].poolId];
                     if (multiplier > 0) {
                         totalRewards = totalRewards * multiplier / 100;
