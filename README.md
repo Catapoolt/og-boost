@@ -9,6 +9,10 @@ Idea for the future: Prevent liquidity withdrawal based on the amount of reward 
 ## How to run
 The contracts have been deployed to BNB Chain test net.
 
+You can also follow the recording for the how to run steps:
+
+[![OGBoost](https://img.youtube.com/vi/sRhFv59z5Tc/0.jpg)](https://www.youtube.com/watch?v=sRhFv59z5Tc)
+
 #### Prerequisites
 Set environment vars
 
