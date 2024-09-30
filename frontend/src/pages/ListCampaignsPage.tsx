@@ -12,10 +12,10 @@ import {
 	Thead,
 	Tr,
 	useToast,
-	Flex,
+	Flex, Link,
 } from '@chakra-ui/react';
 import { BrowserProvider, Contract, ethers, JsonRpcProvider } from 'ethers';
-import { CONTRACT_ADDRESS, getPoolById, getTokenByAddress } from '../utils';
+import { CONTRACT_ADDRESS, getPoolById, getTokenByAddress, truncateMiddle } from '../utils';
 import Project from '../abi/Catapoolt.json';
 import React, { useEffect, useState } from 'react';
 import { iCampaign } from '../models/createCampaign';
@@ -31,12 +31,13 @@ const ListCampaignsPage = () => {
 	const [loading, setLoading] = useState(false);
 	const [campaigns, setCampaigns] = useState<iCampaign[]>([]);
 	const [loadingClaim, setLoadingClaim] = useState(false);
+	const [txHash, setTxHash] = useState<string>('');
 	
 	useEffect(() => {
 		if (address) {
 			getCampaigns();
 		}
-	}, [address]);
+	}, [address, txHash]);
 	
 	const getReward = async (
 		campaignId: string,
@@ -63,7 +64,7 @@ const ListCampaignsPage = () => {
 		
 		try {
 			const reward = await contract.listRewards(address, campaignId);
-			return ethers.formatUnits(reward.amount);
+			return Number(ethers.formatUnits(reward.amount)).toFixed(3);
 		} catch (error) {
 			console.error(`Error getting reward for campaign ${campaignId}:`, error);
 			toast({
@@ -97,7 +98,7 @@ const ListCampaignsPage = () => {
 					return {
 						id: campaign.id.toString(),
 						pool: campaign.pool,
-						rewardAmount: ethers.formatUnits(campaign.rewardAmount),
+						rewardAmount: Number(ethers.formatUnits(campaign.rewardAmount)).toFixed(3),
 						rewardToken: campaign.rewardToken,
 						startsAt: Number(campaign.startsAt),
 						endsAt: Number(campaign.endsAt),
@@ -118,7 +119,7 @@ const ListCampaignsPage = () => {
 		}
 	};
 	
-	const toastNotify = (title: string, message: string) => {
+	const toastNotify = (title: string, message: string, txHas?: string, type: 'error' | 'success' = 'error') => {
 		toast({
 			title: title,
 			position: 'top',
@@ -127,9 +128,18 @@ const ListCampaignsPage = () => {
 					<Box>
 						{message}
 					</Box>
+					{txHas && (
+						<Link
+							color={'yellow.100'}
+							href={`https://testnet.bscscan.com/tx/${txHas}`}
+							isExternal
+						>
+							{`https://testnet.bscscan.com/tx/${truncateMiddle(txHas, 13)}`}
+						</Link>
+					)}
 				</>
 			),
-			status: 'error',
+			status: type,
 			duration: 9000,
 			isClosable: true,
 		});
@@ -151,9 +161,11 @@ const ListCampaignsPage = () => {
 			console.log('Gas limit:', gasEstimate);
 			
 			const tx = await contract.claimReward(Number(campaignId), { gasLimit: 5_000_000 });
-			console.log('tx:', tx);
 			const receipt = await tx.wait();
+			console.log('receipt:', receipt);
 			setLoadingClaim(false);
+			toastNotify('Rewards claimed', 'Rewards successfully claimed 🎉', receipt.hash, 'success');
+			setTxHash(receipt.hash);
 			
 		} catch (e) {
 			console.log('Error claiming reward:', e);
