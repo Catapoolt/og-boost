@@ -34,7 +34,7 @@ contract DeployCatapoolt is Script {
         uint256 endsAt = block.timestamp + 1 days;
         uint256 earnedFeesAmount = 10 ether;
         address feeToken = wbnbAddress;
-        uint256 multiplierPercent = 255;
+        uint256 multiplierPercent = 200;
 
         vm.startBroadcast();
         cake3.approve(catapooltAddress, type(uint256).max);

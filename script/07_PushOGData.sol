@@ -25,10 +25,11 @@ contract DeployCatapoolt is Script {
         console.log("Loaded Catapoolt at:", address(catapoolt));
 
         vm.startBroadcast();
+        uint256 amount = 12 ether;
         bytes memory appCircuitOutput = abi.encodePacked(
             address(alice),
             address(wbnbAddress),
-            uint256(12 ether)
+            uint256(amount)
         );
         catapoolt._handleProofResult(appCircuitOutput);
         vm.stopBroadcast();
