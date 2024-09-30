@@ -62,6 +62,7 @@ contract Rewards is Test, CLTestUtils {
         uint256 tokenId = addLiquidity(key, 1 ether, 1 ether, -60, 60, address(this));
         console.log("Liqudity added. Token ID:", tokenId);
         vm.roll(10);
+        vm.warp(30);
 
         // CREATE CAMPAIGN
         uint256 rewardAmount = 10 ether;
@@ -70,7 +71,7 @@ contract Rewards is Test, CLTestUtils {
         uint256 endsAt = block.timestamp + 1 days;
         uint256 earnedFeesAmount = 10 ether;
         address feeToken = Currency.unwrap(currency0);
-        uint256 multiplierPercent = 255;
+        uint256 multiplierPercent = 200;
 
         MockERC20(Currency.unwrap(currency0)).approve(address(hook), type(uint256).max);
         MockERC20(Currency.unwrap(currency1)).approve(address(hook), type(uint256).max);
@@ -93,6 +94,7 @@ contract Rewards is Test, CLTestUtils {
         );
         console.log("Created campaign with ID:", campaignId);
         vm.roll(20);
+        vm.warp(60);
 
         // SWAPS
         exactInputSingle(
@@ -107,12 +109,24 @@ contract Rewards is Test, CLTestUtils {
         );
         console.log("Swap performed");
         vm.roll(30);
+        vm.warp(90);
 
+        // POKE REWARDS
         console.log("Poking rewards");
         increaseLiquidity(tokenId, key, 0 ether, 0 ether, -60, 60);
 
         
         vm.roll(40);
+        vm.warp(120);
+
+        // OG Multiplier
+        bytes memory appCircuitOutput = abi.encodePacked(
+            address(address(this)),
+            address(Currency.unwrap(currency1)),
+            uint256(12 ether)
+        );
+        hook._handleProofResult(appCircuitOutput);
+
 
         // SHOW REWARDS
         Catapoolt.Reward[] memory rewards = hook.listAllRewards(address(this));
@@ -120,28 +134,4 @@ contract Rewards is Test, CLTestUtils {
             console.log("Reward amount:", rewards[i].amount);
         }
     }
-
-    // function testSwapCallback() public {
-    //     MockERC20(Currency.unwrap(currency0)).mint(address(this), 1 ether);
-    //     MockERC20(Currency.unwrap(currency1)).mint(address(this), 1 ether);
-    //     addLiquidity(key, 1 ether, 1 ether, -60, 60, address(this));
-
-    //     assertEq(hook.beforeSwapCount(key.toId()), 0);
-    //     assertEq(hook.afterSwapCount(key.toId()), 0);
-
-    //     MockERC20(Currency.unwrap(currency0)).mint(address(this), 0.1 ether);
-    //     exactInputSingle(
-    //         ICLRouterBase.CLSwapExactInputSingleParams({
-    //             poolKey: key,
-    //             zeroForOne: true,
-    //             amountIn: 0.1 ether,
-    //             amountOutMinimum: 0,
-    //             sqrtPriceLimitX96: 0,
-    //             hookData: new bytes(0)
-    //         })
-    //     );
-
-    //     assertEq(hook.beforeSwapCount(key.toId()), 1);
-    //     assertEq(hook.afterSwapCount(key.toId()), 1);
-    // }
 }
